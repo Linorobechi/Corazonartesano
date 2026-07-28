@@ -2,13 +2,18 @@ import React, { useState } from "react";
 import loginImg from "../assets/6.jpeg"; 
 import { motion } from "framer-motion";
 import Footer from "../components/Footer";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+
+const emptyForm = {
+  identifier: "",
+  password: "",
+};
 
 export default function Login() {
-  const [form, setForm] = useState({
-    id: "",
-    password: "",
-  });
+  const navigate = useNavigate();
+  const [form, setForm] = useState(emptyForm);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setForm({
@@ -17,9 +22,52 @@ export default function Login() {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Login:", form);
+    setError("");
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(form),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "No se pudo iniciar sesión");
+      }
+
+      localStorage.setItem("auth_token", data.token);
+      localStorage.setItem("auth_user", JSON.stringify(data.user));
+      window.dispatchEvent(new Event("auth-changed"));
+      window.dispatchEvent(
+        new CustomEvent("app-notification", {
+          detail: {
+            type: "success",
+            message: `Bienvenido, ${data.user.nombre}`,
+          },
+        })
+      );
+      setForm(emptyForm);
+      navigate("/");
+    } catch (loginError) {
+      setError(loginError.message);
+      window.dispatchEvent(
+        new CustomEvent("app-notification", {
+          detail: {
+            type: "error",
+            message: loginError.message,
+          },
+        })
+      );
+    } finally {
+      setLoading(false);
+    }
 
   };
 
@@ -64,9 +112,9 @@ export default function Login() {
           <motion.input
             whileFocus={{ scale: 1.02 }}
             type="text"
-            name="id"
-            placeholder="ID de usuario"
-            value={form.id}
+            name="identifier"
+            placeholder="Identificación o correo"
+            value={form.identifier}
             onChange={handleChange}
             className="w-full p-3 rounded-md bg-[#f1ece7] outline-none focus:ring-2 focus:ring-[#8b5e3c]"
           />
@@ -86,9 +134,16 @@ export default function Login() {
             whileTap={{ scale: 0.95 }}
             type="submit"
             className="w-full bg-[#8b5e3c] text-white py-3 rounded-md hover:bg-[#754d31]"
+            disabled={loading}
           >
-            Iniciar Sesión
+            {loading ? "Ingresando..." : "Iniciar Sesión"}
           </motion.button>
+
+          {error && (
+            <p className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
+              {error}
+            </p>
+          )}
 
         </form>
 
@@ -100,7 +155,7 @@ export default function Login() {
         >
           ¿No tienes cuenta?{" "}
           <Link 
-            to="/Register" 
+            to="/register" 
             className="text-[#8b5e3c] hover:underline"
           >
             Regístrate

@@ -3,6 +3,7 @@ import Grid_Productos from "../components/Grid_Productos";
 import Footer from "../components/Footer";
 import PagosSeguros from "../Components/Pagos";
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 
 // 🔥 Animaciones reutilizables
 const fadeUp = {
@@ -24,7 +25,15 @@ const stagger = {
 export default function Productos() {
   return (
     <>
-      <section className="bg-[#e9dfd4] py-16 px-6 text-center">
+      <section className="bg-[#e9dfd4] py-16 px-6 text-center relative">
+        <div className="max-w-6xl mx-auto mb-6 flex justify-start">
+          <Link
+            to="/agregar-productos"
+            className="inline-flex items-center rounded-full bg-[#8b5e3c] px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-[#754d31]"
+          >
+            Agregar productos
+          </Link>
+        </div>
         
         {/* HEADER */}
         <motion.div

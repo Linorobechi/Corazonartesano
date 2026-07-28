@@ -2,15 +2,22 @@ import React, { useState } from "react";
 import registerImg from "../assets/5.jpeg";
 import { motion } from "framer-motion";
 import Footer from "../components/Footer";
+import { Link, useNavigate } from "react-router-dom";
+
+const emptyForm = {
+  nombre: "",
+  email: "",
+  identificacion: "",
+  password: "",
+  confirmPassword: "",
+};
 
 export default function Register() {
-  const [form, setForm] = useState({
-    nombre: "",
-    email: "",
-    Identificacion: "",
-    password: "",
-    confirmPassword: "",
-  });
+  const navigate = useNavigate();
+  const [form, setForm] = useState(emptyForm);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setForm({
@@ -19,15 +26,68 @@ export default function Register() {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
+    setSuccess("");
 
     if (form.password !== form.confirmPassword) {
-      alert("Las contraseñas no coinciden");
+      setError("Las contraseñas no coinciden");
       return;
     }
 
-    console.log("Registro:", form);
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          nombre: form.nombre,
+          email: form.email,
+          identificacion: form.identificacion,
+          password: form.password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "No se pudo registrar el usuario");
+      }
+
+      localStorage.setItem("auth_token", data.token);
+      localStorage.setItem("auth_user", JSON.stringify(data.user));
+      window.dispatchEvent(new Event("auth-changed"));
+      window.dispatchEvent(
+        new CustomEvent("app-notification", {
+          detail: {
+            type: "success",
+            message: "Cuenta creada correctamente",
+          },
+        })
+      );
+
+      setSuccess("Cuenta creada correctamente. Ya puedes iniciar sesión.");
+      setForm(emptyForm);
+      setTimeout(() => {
+        navigate("/");
+      }, 1200);
+    } catch (registerError) {
+      setError(registerError.message);
+      window.dispatchEvent(
+        new CustomEvent("app-notification", {
+          detail: {
+            type: "error",
+            message: registerError.message,
+          },
+        })
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -117,9 +177,22 @@ export default function Register() {
                   whileTap={{ scale: 0.95 }}
                   type="submit"
                   className="w-full bg-[#8b5e3c] text-white py-3 rounded-md hover:bg-[#754d31]"
+                  disabled={loading}
                 >
-                  Registrarse
+                  {loading ? "Creando cuenta..." : "Registrarse"}
                 </motion.button>
+
+                {error && (
+                  <p className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
+                    {error}
+                  </p>
+                )}
+
+                {success && (
+                  <p className="text-sm text-green-700 bg-green-50 p-3 rounded-md">
+                    {success}
+                  </p>
+                )}
 
               </form>
 
@@ -130,12 +203,12 @@ export default function Register() {
                 className="text-sm mt-4 text-gray-500"
               >
                 ¿Ya tienes cuenta?{" "}
-                <a
-                  href="/login"
+                <Link
+                  to="/login"
                   className="text-[#8b5e3c] hover:underline"
                 >
                   Inicia sesión
-                </a>
+                </Link>
               </motion.p>
 
             </div>
