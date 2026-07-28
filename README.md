@@ -1,16 +1,49 @@
-# React + Vite
+# Corazon Artesano
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicacion full-stack con React + Vite (frontend) y Express + MySQL (backend).
 
-Currently, two official plugins are available:
+## Requisitos
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Node.js 18+
+- XAMPP con MySQL activo en el puerto `3306`
 
-## React Compiler
+## Configuracion para otro PC
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+1. Clona el repositorio.
+2. Instala dependencias:
 
-## Expanding the ESLint configuration
+```bash
+npm install
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+3. Crea el archivo `.env` en la raiz copiando `.env.example`.
+4. Verifica que tenga estos valores por defecto para XAMPP:
+
+```env
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=
+DB_NAME=corazon_artesano
+JWT_SECRET=corazon-artesano-secret
+PORT=3001
+```
+
+## Ejecutar
+
+Frontend + backend al mismo tiempo:
+
+```bash
+npm run dev:full
+```
+
+URLs:
+
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:3001`
+
+## Notas
+
+- El backend crea automaticamente la base de datos y tablas si no existen.
+- Las imagenes subidas por usuarios se guardan en `server/uploads/`.
+- `.env` no se sube al repositorio; solo `.env.example`.
