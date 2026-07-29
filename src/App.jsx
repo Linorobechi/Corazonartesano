@@ -4,11 +4,11 @@ import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import Contacto from "./pages/Contacto.jsx";
 import Nosotros from "./pages/Nosotros.jsx";
-import Navbar from "./components/Header.jsx";
+import Navbar from "./Components/Header.jsx";
 import Productos from "./pages/Productos.jsx";
 import Panel from "./pages/Panel.jsx";
-import ToastHost from "./components/ToastHost.jsx";
-import { ProtectedRoute, PublicOnlyRoute } from "./components/AuthRoutes.jsx";
+import ToastHost from "./Components/ToastHost.jsx";
+import { ProtectedRoute, PublicOnlyRoute } from "./Components/AuthRoutes.jsx";
 
 
 
