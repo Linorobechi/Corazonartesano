@@ -2,7 +2,7 @@ import React from "react";
 import Formulario from "../Components/Formulario";
 import { FaMapMarkerAlt, FaPhoneAlt, FaEnvelope } from "react-icons/fa";
 import contacto from "../assets/contacto.jpg";
-import Footer from "../components/Footer";
+import Footer from "../Components/Footer";
 import { motion } from "framer-motion";
 const MotionLink = motion(Link);
 import { Link } from "react-router-dom";

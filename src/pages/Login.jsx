@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import loginImg from "../assets/6.jpeg"; 
 import { motion } from "framer-motion";
-import Footer from "../components/Footer";
+import Footer from "../Components/Footer";
 import { Link, useNavigate } from "react-router-dom";
 
 const emptyForm = {

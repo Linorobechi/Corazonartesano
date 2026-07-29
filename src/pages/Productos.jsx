@@ -1,6 +1,6 @@
 import { FaStar, FaShoppingCart, FaHeart } from "react-icons/fa";
-import Grid_Productos from "../components/Grid_Productos";
-import Footer from "../components/Footer";
+import Grid_Productos from "../Components/Grid_Productos";
+import Footer from "../Components/Footer";
 import PagosSeguros from "../Components/Pagos";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";

@@ -1,7 +1,7 @@
 import React from "react";
 import mochilas from "../assets/Mochilas.jpeg";
 import { FaHeart, FaUsers, FaLeaf, FaBullseye } from "react-icons/fa";
-import Footer from "../components/Footer";
+import Footer from "../Components/Footer";
 import { motion } from "framer-motion";
 
 
