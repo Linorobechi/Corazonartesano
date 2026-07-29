@@ -39,7 +39,7 @@ export default function Grid_Productos() {
   useEffect(() => {
     const loadProducts = async () => {
       try {
-        const response = await fetch("/api/products");
+        const response = await fetch("https://corazonartesano.onrender.com/api/products");
         const data = await response.json();
 
         if (!response.ok) {
