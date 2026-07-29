@@ -9,6 +9,8 @@ import fs from "fs";
 import path from "path";
 
 const app = express();
+app.use(cors());
+app.use(express.json());
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || "corazon-artesano-secret";
 const DB_NAME = process.env.DB_NAME || "corazon_artesano";
