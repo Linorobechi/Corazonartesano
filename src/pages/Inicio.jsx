@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import React from "react";
 import { FaHeart,FaUsers,FaMapMarkerAlt,FaArrowRight,FaMagic,} from "react-icons/fa";
 import { motion } from "framer-motion";
-import Footer from "../components/Footer";
+import Footer from "../Components/Footer";
 import fondo from "../assets/Fondoinicio.jpeg";
 import img from "../assets/bolsos.jpeg";
 import img1 from "../assets/1.jpeg";

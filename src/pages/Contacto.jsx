@@ -1,5 +1,5 @@
 import React from "react";
-import Formulario from "../components/Formulario";
+import Formulario from "../Components/Formulario";
 import { FaMapMarkerAlt, FaPhoneAlt, FaEnvelope } from "react-icons/fa";
 import contacto from "../assets/contacto.jpg";
 import Footer from "../components/Footer";
