@@ -79,6 +79,8 @@ function Header() {
     { to: "/contacto", label: "Contacto" },
     { to: "/nosotros", label: "Nosotros" },
     { to: "/productos", label: "Productos" },
+    { to: "/cursos", label: "Cursos" },
+
   ];
 
   const authLinks = [
@@ -122,17 +124,26 @@ function Header() {
 
           {isAuthenticated ? (
                       <>
-                       <a
-                href="https://corazonartesano.moodlecloud.com/login/index.php"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="relative pb-1 text-[#7a4b2c]"
-              >
+            <NavLink
+              to="/cursos"
+              className={linkClass}
+              onClick={(e) => {
+                e.preventDefault();
+                window.open(
+                  "https://corazonartesano.moodlecloud.com/login/index.php",
+                  "_blank"
+                );
+              }}
+            >
+              {({ isActive }) => (
                 <span className="relative">
                   Cursos
-                  <span className="absolute left-0 -bottom-1 w-full h-[2px] bg-[#7a4b2c]"></span>
+                  {isActive && (
+                    <span className="absolute left-0 -bottom-1 w-full h-[2px] bg-[#7a4b2c]"></span>
+                  )}
                 </span>
-              </a>
+              )}
+            </NavLink>
               <span className="text-gray-500">
                 Hola, {user?.nombre || "usuario"}
               </span>
@@ -177,18 +188,27 @@ function Header() {
               ))}
 
             {isAuthenticated ? (
-              <>
-              <a
-                href="https://corazonartesano.moodlecloud.com/login/index.php"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="relative pb-1 text-[#7a4b2c]"
+            <><NavLink
+                to="/cursos"
+                className={linkClass}
+                onClick={(e) => {
+                  e.preventDefault();
+                  window.open(
+                    "https://corazonartesano.moodlecloud.com/login/index.php",
+                    "_blank"
+                  );
+                }}
               >
-                <span className="relative">
-                  Cursos
-                  <span className="absolute left-0 -bottom-1 w-full h-[2px] bg-[#7a4b2c]"></span>
-                </span>
-              </a>
+                {({ isActive }) => (
+                  <span className="relative">
+                    Cursos
+                    {isActive && (
+                      <span className="absolute left-0 -bottom-1 w-full h-[2px] bg-[#7a4b2c]"></span>
+                    )}
+                  </span>
+                )}
+              </NavLink>
+             
                 <span className="text-sm text-gray-500">
                   Hola, {user?.nombre || "usuario"}
                 </span>
