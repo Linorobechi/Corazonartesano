@@ -173,15 +173,24 @@ const ensureDatabase = async () => {
   );
 
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      nombre VARCHAR(120) NOT NULL,
-      email VARCHAR(180) NOT NULL UNIQUE,
-      identificacion VARCHAR(30) NOT NULL UNIQUE,
-      password VARCHAR(255) NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  CREATE TABLE IF NOT EXISTS users (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(120) NOT NULL,
+  email VARCHAR(180) NOT NULL UNIQUE,
+  identificacion VARCHAR(30) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  moodle_id INT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
+ 
+  const userColumns = await getTableColumns("users");
+
+if (!userColumns.has("moodle_id")) {
+  await pool.query(
+    "ALTER TABLE users ADD COLUMN moodle_id INT NULL"
+  );
+}
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS products (
