@@ -7,6 +7,8 @@ import mysql from "mysql2/promise";
 import multer from "multer";
 import fs from "fs";
 import path from "path";
+import axios from "axios";
+
 
 const app = express();
 app.use(cors());
@@ -476,6 +478,30 @@ app.post("/api/login", async (req, res) => {
 
 app.get("/api/me", authMiddleware, (req, res) => {
   return res.json({ user: req.user });
+});
+
+app.get("/api/moodle/courses", async (_req, res) => {
+  try {
+    const response = await axios.get(
+      `${process.env.MOODLE_URL}/webservice/rest/server.php`,
+      {
+        params: {
+          wstoken: process.env.MOODLE_TOKEN,
+          wsfunction: "core_course_get_courses",
+          moodlewsrestformat: "json",
+        },
+      }
+    );
+
+    res.json(response.data);
+  } catch (error) {
+    console.error(error.response?.data || error.message);
+
+    res.status(500).json({
+      message: "Error al conectar con Moodle",
+      error: error.response?.data || error.message,
+    });
+  }
 });
 
 const startServer = async () => {
