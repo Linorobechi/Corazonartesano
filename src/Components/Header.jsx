@@ -121,13 +121,17 @@ function Header() {
           {isAuthenticated && privateLinks.map(renderDesktopLink)}
 
           {isAuthenticated ? (
-                      <><a
+                      <>
+                       <a
                 href="https://corazonartesano.moodlecloud.com/login/index.php"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[#7a4b2c] font-medium hover:underline"
+                className="relative pb-1 text-[#7a4b2c]"
               >
-                Moodle
+                <span className="relative">
+                  Cursos
+                  <span className="absolute left-0 -bottom-1 w-full h-[2px] bg-[#7a4b2c]"></span>
+                </span>
               </a>
               <span className="text-gray-500">
                 Hola, {user?.nombre || "usuario"}
@@ -178,9 +182,12 @@ function Header() {
                 href="https://corazonartesano.moodlecloud.com/login/index.php"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[#7a4b2c] font-medium hover:underline"
+                className="relative pb-1 text-[#7a4b2c]"
               >
-                Moodle
+                <span className="relative">
+                  Cursos
+                  <span className="absolute left-0 -bottom-1 w-full h-[2px] bg-[#7a4b2c]"></span>
+                </span>
               </a>
                 <span className="text-sm text-gray-500">
                   Hola, {user?.nombre || "usuario"}
