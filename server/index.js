@@ -400,34 +400,13 @@ async function crearUsuarioMoodle({ nombre, email, password }) {
     }
   );
 
-  async function crearUsuarioMoodle({ nombre, email, password }) {
-  const username = email.toLowerCase();
-
-  const response = await axios.post(
-    `${process.env.MOODLE_URL}/webservice/rest/server.php`,
-    null,
-    {
-      params: {
-        wstoken: process.env.MOODLE_TOKEN,
-        wsfunction: "core_user_create_users",
-        moodlewsrestformat: "json",
-
-        "users[0][username]": username,
-        "users[0][password]": password,
-        "users[0][firstname]": nombre,
-        "users[0][lastname]": "Usuario",
-        "users[0][email]": email,
-      },
-    }
-  );
-
   if (!response.data || !response.data[0]?.id) {
-    throw new Error("Moodle no devolvió el ID del usuario");
+    throw new Error(JSON.stringify(response.data));
   }
 
   return response.data[0];
 }
-}
+  
 
 async function inscribirUsuarioMoodle(userid, courseid) {
   await axios.post(
@@ -498,11 +477,14 @@ await pool.query(
   ]
 );
 
+// Actualizar objeto usuario
+user.moodle_id = moodleUser.id;
+
 console.log("Usuario Moodle creado:", moodleUser);
 
-    const token = jwt.sign(buildUserResponse(user), JWT_SECRET, {
-      expiresIn: "7d",
-    });
+const token = jwt.sign(buildUserResponse(user), JWT_SECRET, {
+  expiresIn: "7d",
+});
 
     return res.status(201).json({
       message: "Usuario registrado correctamente",
@@ -510,8 +492,15 @@ console.log("Usuario Moodle creado:", moodleUser);
       user: buildUserResponse(user),
     });
   } catch (error) {
-    return res.status(500).json({
-      message: "No se pudo registrar el usuario",
+
+  console.error(
+    "ERROR REGISTRO:",
+    error.response?.data || error.message
+  );
+
+  return res.status(500).json({
+    message: "No se pudo registrar el usuario",
+    error: error.response?.data || error.message
     });
   }
 });
