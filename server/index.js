@@ -379,6 +379,75 @@ app.use((error, _req, res, next) => {
   return next(error);
 });
 
+async function crearUsuarioMoodle({ nombre, email, password }) {
+  const username = email.toLowerCase();
+
+  const response = await axios.post(
+    `${process.env.MOODLE_URL}/webservice/rest/server.php`,
+    null,
+    {
+      params: {
+        wstoken: process.env.MOODLE_TOKEN,
+        wsfunction: "core_user_create_users",
+        moodlewsrestformat: "json",
+
+        "users[0][username]": username,
+        "users[0][password]": password,
+        "users[0][firstname]": nombre,
+        "users[0][lastname]": "Usuario",
+        "users[0][email]": email,
+      },
+    }
+  );
+
+  async function crearUsuarioMoodle({ nombre, email, password }) {
+  const username = email.toLowerCase();
+
+  const response = await axios.post(
+    `${process.env.MOODLE_URL}/webservice/rest/server.php`,
+    null,
+    {
+      params: {
+        wstoken: process.env.MOODLE_TOKEN,
+        wsfunction: "core_user_create_users",
+        moodlewsrestformat: "json",
+
+        "users[0][username]": username,
+        "users[0][password]": password,
+        "users[0][firstname]": nombre,
+        "users[0][lastname]": "Usuario",
+        "users[0][email]": email,
+      },
+    }
+  );
+
+  if (!response.data || !response.data[0]?.id) {
+    throw new Error("Moodle no devolvió el ID del usuario");
+  }
+
+  return response.data[0];
+}
+}
+
+async function inscribirUsuarioMoodle(userid, courseid) {
+  await axios.post(
+    `${process.env.MOODLE_URL}/webservice/rest/server.php`,
+    null,
+    {
+      params: {
+        wstoken: process.env.MOODLE_TOKEN,
+        wsfunction: "enrol_manual_enrol_users",
+        moodlewsrestformat: "json",
+
+        "enrolments[0][roleid]": 5,
+        "enrolments[0][userid]": userid,
+        "enrolments[0][courseid]": courseid,
+      },
+    }
+  );
+}
+
+
 app.post("/api/register", async (req, res) => {
   try {
     const { nombre, email, identificacion, password } = req.body;
@@ -413,6 +482,23 @@ app.post("/api/register", async (req, res) => {
     );
 
     const user = userRows[0];
+
+const moodleUser = await crearUsuarioMoodle({
+  nombre,
+  email,
+  password,
+});
+
+
+await pool.query(
+  "UPDATE users SET moodle_id = ? WHERE id = ?",
+  [
+    moodleUser.id,
+    user.id
+  ]
+);
+
+console.log("Usuario Moodle creado:", moodleUser);
 
     const token = jwt.sign(buildUserResponse(user), JWT_SECRET, {
       expiresIn: "7d",
