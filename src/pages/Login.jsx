@@ -9,6 +9,8 @@ const emptyForm = {
   password: "",
 };
 
+const API_URL = import.meta.env.VITE_API_URL || "https://corazonartesano.onrender.com";
+
 export default function Login() {
   const navigate = useNavigate();
   const [form, setForm] = useState(emptyForm);
@@ -28,13 +30,24 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const response = await fetch("https://corazonartesano.onrender.com/api/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(form),
-      });
+      let response;
+      try {
+        response = await fetch(`${API_URL}/api/login`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(form),
+        });
+      } catch {
+        response = await fetch("/api/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(form),
+        });
+      }
 
       const data = await response.json();
 

@@ -31,24 +31,92 @@ const fadeUp = {
   },
 };
 
+const DEFAULT_PRODUCTS = [
+  {
+    id: 1,
+    nombre: "Sombrero Vueltiao Tradicional",
+    autor: "María Contreras",
+    descripcion: "Sombrero vueltiao auténtico tejido a mano",
+    precio: "$ 180.000",
+    imagen_key: "1.jpeg",
+    rating: 4.8,
+  },
+  {
+    id: 2,
+    nombre: "Collar Artesanal Multicolor",
+    autor: "Carmen López",
+    descripcion: "Collar de mostacilla hecho a mano",
+    precio: "$ 85.000",
+    imagen_key: "2.jpeg",
+    rating: 4.8,
+  },
+  {
+    id: 3,
+    nombre: "Mochila Wayuu Tradicional",
+    autor: "José Martínez",
+    descripcion: "Mochila tejida con patrones únicos",
+    precio: "$ 250.000",
+    imagen_key: "3.jpeg",
+    rating: 4.8,
+  },
+  {
+    id: 4,
+    nombre: "Pulseras Artesanales",
+    autor: "Ana Pérez",
+    descripcion: "Pulseras tejidas con colores vivos",
+    precio: "$ 40.000",
+    imagen_key: "4.jpeg",
+    rating: 4.8,
+  },
+  {
+    id: 5,
+    nombre: "Accesorios Étnicos",
+    autor: "Luis Gómez",
+    descripcion: "Accesorios con identidad cultural",
+    precio: "$ 60.000",
+    imagen_key: "5.jpeg",
+    rating: 4.8,
+  },
+  {
+    id: 6,
+    nombre: "Joyas Artesanales",
+    autor: "Sofía Rojas",
+    descripcion: "Joyas hechas a mano",
+    precio: "$ 120.000",
+    imagen_key: "6.jpeg",
+    rating: 4.8,
+  },
+];
+
 export default function Grid_Productos() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   useEffect(() => {
     const loadProducts = async () => {
       try {
-        const response = await fetch("https://corazonartesano.onrender.com/api/products");
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.message || "No se pudieron cargar los productos");
+        const API_URL = import.meta.env.VITE_API_URL || "";
+        let response;
+        try {
+          response = await fetch(`${API_URL}/api/products`);
+        } catch {
+          // Intentar fetch relativo si el API_URL de produccion falla
+          response = await fetch("/api/products");
         }
 
-        setProducts(data.products || []);
+        if (!response.ok) {
+          throw new Error("No se pudieron cargar los productos desde el servidor");
+        }
+
+        const data = await response.json();
+        if (data.products && data.products.length > 0) {
+          setProducts(data.products);
+        } else {
+          setProducts(DEFAULT_PRODUCTS);
+        }
       } catch (loadError) {
-        setError(loadError.message);
+        console.warn("Usando catálogo de productos por defecto:", loadError);
+        setProducts(DEFAULT_PRODUCTS);
       } finally {
         setLoading(false);
       }
@@ -62,14 +130,6 @@ export default function Grid_Productos() {
       return (
         <div className="col-span-full text-center text-gray-600 py-10">
           Cargando productos...
-        </div>
-      );
-    }
-
-    if (error) {
-      return (
-        <div className="col-span-full text-center text-red-700 bg-red-50 border border-red-200 rounded-xl py-6 px-4">
-          {error}
         </div>
       );
     }
@@ -139,7 +199,7 @@ export default function Grid_Productos() {
         </div>
       </motion.div>
     ));
-  }, [error, loading, products]);
+  }, [loading, products]);
 
   return (
     <section className="bg-[#f5f2ef] py-16 px-6">

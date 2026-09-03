@@ -41,18 +41,27 @@ export default function Register() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/api/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          nombre: form.nombre,
-          email: form.email,
-          identificacion: form.identificacion,
-          password: form.password,
-        }),
+      let response;
+      const bodyData = JSON.stringify({
+        nombre: form.nombre,
+        email: form.email,
+        identificacion: form.identificacion,
+        password: form.password,
       });
+
+      try {
+        response = await fetch(`${API_URL}/api/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: bodyData,
+        });
+      } catch {
+        response = await fetch("/api/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: bodyData,
+        });
+      }
 
       const data = await response.json();
 

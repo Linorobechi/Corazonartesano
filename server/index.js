@@ -471,25 +471,26 @@ app.post("/api/register", async (req, res) => {
 
     const user = userRows[0];
 
-const moodleUser = await crearUsuarioMoodle({
-  nombre,
-  email,
-  password,
-});
+    try {
+      if (process.env.MOODLE_URL && process.env.MOODLE_TOKEN) {
+        const moodleUser = await crearUsuarioMoodle({
+          nombre,
+          email,
+          password,
+        });
 
-
-await pool.query(
-  "UPDATE users SET moodle_id = ? WHERE id = ?",
-  [
-    moodleUser.id,
-    user.id
-  ]
-);
-
-// Actualizar objeto usuario
-user.moodle_id = moodleUser.id;
-
-console.log("Usuario Moodle creado:", moodleUser);
+        if (moodleUser?.id) {
+          await pool.query(
+            "UPDATE users SET moodle_id = ? WHERE id = ?",
+            [moodleUser.id, user.id]
+          );
+          user.moodle_id = moodleUser.id;
+          console.log("Usuario Moodle creado:", moodleUser);
+        }
+      }
+    } catch (moodleError) {
+      console.warn("Moodle omision o no disponible:", moodleError.response?.data || moodleError.message);
+    }
 
 const token = jwt.sign(buildUserResponse(user), JWT_SECRET, {
   expiresIn: "7d",
