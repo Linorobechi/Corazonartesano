@@ -4,6 +4,8 @@ import { motion } from "framer-motion";
 import Footer from "../Components/Footer";
 import { Link, useNavigate } from "react-router-dom";
 
+const API_URL = import.meta.env.VITE_API_URL || "https://corazonartesano.onrender.com";
+
 const emptyForm = {
   nombre: "",
   email: "",
@@ -39,7 +41,7 @@ export default function Register() {
     setLoading(true);
 
     try {
-      const response = await fetch("https://corazonartesano.onrender.com/api/register", {
+      const response = await fetch(`${API_URL}/api/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -135,22 +137,16 @@ export default function Register() {
                   onChange={handleChange}
                   className="w-full p-3 rounded-md bg-[#f1ece7] outline-none focus:ring-2 focus:ring-[#8b5e3c]"
                 />
-                                <motion.input
+
+                <motion.input
                   whileFocus={{ scale: 1.02 }}
-                  type="number"
+                  type="text"
                   name="identificacion"
                   placeholder="Identificación"
                   value={form.identificacion}
-                  onChange={(e) => {
-                    let value = e.target.value;
-
-                    value = value.replace(/\D/g, "");
-                    if (value.length > 10) return;
-
-                    setForm({...form, identificacion: value,});
-                  }}
-                  maxLength={10}
-                  className="w-full p-3 rounded-md bg-[#f1ece7] outline-none focus:ring-2 focus:ring-[#8b5e3c]"/>
+                  onChange={handleChange}
+                  className="w-full p-3 rounded-md bg-[#f1ece7] outline-none focus:ring-2 focus:ring-[#8b5e3c]"
+                />
 
                 <motion.input
                   whileFocus={{ scale: 1.02 }}
