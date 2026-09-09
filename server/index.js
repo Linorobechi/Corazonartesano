@@ -9,6 +9,7 @@ import fs from "fs";
 import path from "path";
 import axios from "axios";
 import crypto from "crypto";
+import nodemailer from "nodemailer";
 
 const app = express();
 app.use(cors());
@@ -322,14 +323,69 @@ const ensureDatabase = async () => {
   }
 };
 
-// SIMULADOR / ENVÍO DE NOTIFICACIONES VÍA CORREO ELECTRÓNICO (RF-10)
+// ENVÍO DE NOTIFICACIONES Y CORREOS ELECTRÓNICOS REALES CON NODEMAILER (RF-03, RF-10)
+const createTransporter = () => {
+  const host = process.env.SMTP_HOST || process.env.EMAIL_HOST;
+  const port = Number(process.env.SMTP_PORT || process.env.EMAIL_PORT || 587);
+  const user = process.env.SMTP_USER || process.env.EMAIL_USER || process.env.GMAIL_USER;
+  const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS || process.env.GMAIL_APP_PASSWORD;
+
+  if (user && pass) {
+    if (host) {
+      return nodemailer.createTransport({
+        host,
+        port,
+        secure: port === 465,
+        auth: { user, pass },
+      });
+    } else {
+      // Servicio Gmail predeterminado si se proveen credenciales de usuario y clave de aplicación
+      return nodemailer.createTransport({
+        service: "gmail",
+        auth: { user, pass },
+      });
+    }
+  }
+  return null;
+};
+
 const sendEmailNotification = async ({ to, subject, html, text }) => {
+  const transporter = createTransporter();
+
+  if (transporter) {
+    try {
+      const fromUser =
+        process.env.SMTP_FROM ||
+        process.env.EMAIL_FROM ||
+        process.env.SMTP_USER ||
+        process.env.EMAIL_USER ||
+        "Corazón Artesano <no-reply@corazonartesano.com>";
+
+      const info = await transporter.sendMail({
+        from: fromUser,
+        to,
+        subject,
+        text,
+        html,
+      });
+
+      console.log(`[REAL EMAIL DELIVERED TO: ${to}] MessageId: ${info.messageId}`);
+      return { success: true, messageId: info.messageId, realEmailSent: true };
+    } catch (err) {
+      console.error(`[ERROR ENVIANDO CORREO A ${to}]:`, err.message);
+      return { success: false, error: err.message, realEmailSent: false };
+    }
+  }
+
+  // Fallback simulador para desarrollo cuando no están configuradas las variables SMTP
   console.log("==========================================");
-  console.log(`[EMAIL NOTIFICATION SENT TO: ${to}]`);
+  console.log(`[SIMULATED EMAIL NOTIFICATION SENT TO: ${to}]`);
   console.log(`Asunto: ${subject}`);
   console.log(text || html);
+  console.log("AVISO: Para envío real de correos, configura EMAIL_USER y EMAIL_PASS en .env o Render.");
   console.log("==========================================");
-  return true;
+
+  return { success: true, realEmailSent: false };
 };
 
 // ROUTES
