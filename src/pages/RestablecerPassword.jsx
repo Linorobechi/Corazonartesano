@@ -32,29 +32,40 @@ export default function RestablecerPassword() {
 
     setLoading(true);
 
-    try {
-      const response = await fetch("/api/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: tokenFromUrl, password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Error al restablecer la contraseña");
-      }
-
-      setMessage(data.message);
-      setTimeout(() => {
-        navigate("/login");
-      }, 2000);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+  try {
+  const response = await fetch(
+    "https://corazonartesano.onrender.com/api/reset-password",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        token: tokenFromUrl,
+        password,
+      }),
     }
-  };
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      data.message || "Error al restablecer la contraseña"
+    );
+  }
+
+  setMessage(data.message);
+
+  setTimeout(() => {
+    navigate("/login");
+  }, 2000);
+
+} catch (err) {
+  setError(err.message);
+} finally {
+  setLoading(false);
+}
 
   return (
     <>
