@@ -2,7 +2,8 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import Footer from "../Components/Footer";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
-import { FaLock, FaCheckCircle } from "react-icons/fa";
+import { FaLock, FaCheckCircle, FaExclamationTriangle } from "react-icons/fa";
+import { resetPassword } from "../api/auth";
 
 export default function RestablecerPassword() {
   const [searchParams] = useSearchParams();
@@ -20,8 +21,18 @@ export default function RestablecerPassword() {
     setMessage("");
     setError("");
 
+    if (!tokenFromUrl) {
+      setError("No se ha proporcionado un token válido. Solicita un nuevo enlace.");
+      return;
+    }
+
     if (!password || !confirmPassword) {
-      setError("Diligencia ambas contraseñas.");
+      setError("Por favor completa ambos campos de contraseña.");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("La nueva contraseña debe tener al menos 6 caracteres.");
       return;
     }
 
@@ -32,40 +43,19 @@ export default function RestablecerPassword() {
 
     setLoading(true);
 
-  try {
-  const response = await fetch(
-    "https://corazonartesano.onrender.com/api/reset-password",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        token: tokenFromUrl,
-        password,
-      }),
+    try {
+      const data = await resetPassword(tokenFromUrl, password);
+      setMessage(data.message);
+
+      setTimeout(() => {
+        navigate("/login");
+      }, 2000);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-  );
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(
-      data.message || "Error al restablecer la contraseña"
-    );
-  }
-
-  setMessage(data.message);
-
-  setTimeout(() => {
-    navigate("/login");
-  }, 2000);
-
-} catch (err) {
-  setError(err.message);
-} finally {
-  setLoading(false);
-}
+  };
 
   return (
     <>
@@ -83,6 +73,18 @@ export default function RestablecerPassword() {
             <p className="text-xs text-gray-500">Ingresa tu nueva contraseña a continuación.</p>
           </div>
 
+          {!tokenFromUrl && (
+            <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-2 text-amber-800 text-xs">
+              <FaExclamationTriangle className="text-base flex-shrink-0 mt-0.5" />
+              <span>
+                Falta el token de seguridad en la URL. Si llegaste aquí manualmente, por favor{" "}
+                <Link to="/recuperar-password" className="font-bold underline">
+                  solicita un enlace de recuperación aquí
+                </Link>.
+              </span>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1">
@@ -94,7 +96,8 @@ export default function RestablecerPassword() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                className="w-full px-4 py-3 rounded-xl bg-[#f1ece7] text-sm outline-none focus:ring-2 focus:ring-[#8b5e3c]"
+                disabled={!tokenFromUrl}
+                className="w-full px-4 py-3 rounded-xl bg-[#f1ece7] text-sm outline-none focus:ring-2 focus:ring-[#8b5e3c] disabled:opacity-50"
               />
             </div>
 
@@ -108,13 +111,14 @@ export default function RestablecerPassword() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                className="w-full px-4 py-3 rounded-xl bg-[#f1ece7] text-sm outline-none focus:ring-2 focus:ring-[#8b5e3c]"
+                disabled={!tokenFromUrl}
+                className="w-full px-4 py-3 rounded-xl bg-[#f1ece7] text-sm outline-none focus:ring-2 focus:ring-[#8b5e3c] disabled:opacity-50"
               />
             </div>
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !tokenFromUrl}
               className="w-full bg-[#8b5e3c] text-white py-3 rounded-xl hover:bg-[#754d31] transition font-semibold text-sm shadow-md disabled:opacity-70"
             >
               {loading ? "Guardando nueva contraseña..." : "Guardar Nueva Contraseña"}

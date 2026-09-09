@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL || "https://corazonartesano.onrender.com";
 
 const parseResponse = async (response) => {
   const data = await response.json();
@@ -29,6 +29,30 @@ export const loginUser = async (payload) => {
       "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),
+  });
+
+  return parseResponse(response);
+};
+
+export const forgotPassword = async (email) => {
+  const response = await fetch(`${API_URL}/api/forgot-password`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email }),
+  });
+
+  return parseResponse(response);
+};
+
+export const resetPassword = async (token, password) => {
+  const response = await fetch(`${API_URL}/api/reset-password`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ token, password }),
   });
 
   return parseResponse(response);

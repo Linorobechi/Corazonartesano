@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import Footer from "../Components/Footer";
 import { Link } from "react-router-dom";
 import { FaEnvelope, FaKey, FaCheckCircle, FaArrowLeft } from "react-icons/fa";
+import { forgotPassword } from "../api/auth";
 
 export default function RecuperarPassword() {
   const [email, setEmail] = useState("");
@@ -25,17 +26,7 @@ export default function RecuperarPassword() {
     setLoading(true);
 
     try {
-      const response = await fetch("https://corazonartesano.onrender.com/api/forgot-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Error al solicitar recuperación");
-      }
+      const data = await forgotPassword(email);
 
       setMessage(data.message);
       if (data.tokenPreview || data.simulatedToken) {

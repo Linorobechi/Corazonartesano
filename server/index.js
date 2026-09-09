@@ -652,50 +652,62 @@ app.post("/api/forgot-password", async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ message: "El correo es obligatorio" });
 
-    const token = crypto.randomBytes(20).toString("hex");
-    const expiresAt = new Date(Date.now() + 3600000); // 1 hour
+    const normalizedEmail = email.toLowerCase().trim();
+    const token = crypto.randomBytes(24).toString("hex");
+    const expiresAt = new Date(Date.now() + 3600000); // 1 hora de validez
 
     let userFound = false;
 
     if (isUsingMemoryDb) {
-      const user = memoryDb.users.find((u) => u.email === email.toLowerCase());
+      const user = memoryDb.users.find((u) => u.email === normalizedEmail);
       if (user) {
         userFound = true;
-        memoryDb.password_resets.push({ email: email.toLowerCase(), token, expiresAt });
+        // Limpiar tokens anteriores de este correo
+        memoryDb.password_resets = memoryDb.password_resets.filter((r) => r.email !== normalizedEmail);
+        memoryDb.password_resets.push({ email: normalizedEmail, token, expiresAt });
       }
     } else {
-      const [rows] = await pool.query("SELECT id FROM users WHERE email = ? LIMIT 1", [email.toLowerCase()]);
+      const [rows] = await pool.query("SELECT id FROM users WHERE email = ? LIMIT 1", [normalizedEmail]);
       if (rows.length > 0) {
         userFound = true;
+        // Limpiar tokens anteriores de este correo
+        await pool.query("DELETE FROM password_resets WHERE email = ?", [normalizedEmail]);
         await pool.query(
           "INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, ?)",
-          [email.toLowerCase(), token, expiresAt]
+          [normalizedEmail, token, expiresAt]
         );
       }
     }
 
     if (!userFound) {
-      // Return ambiguous message for security
-      return res.json({
-        message: "Si la cuenta existe, hemos enviado un enlace de recuperación a tu correo electrónico.",
-        simulatedToken: token,
+      return res.status(404).json({
+        message: "El correo electrónico no se encuentra registrado en nuestro sistema.",
       });
     }
 
-    const resetUrl = `${req.protocol}://${req.get("host")}/restablecer-password?token=${token}`;
+    // Determinar el origen del frontend (Vercel o local) para construir la URL correcta
+    const frontendOrigin =
+      process.env.FRONTEND_URL ||
+      req.headers.origin ||
+      (req.headers.referer ? req.headers.referer.replace(/\/$/, "") : null) ||
+      "https://corazonartesano.vercel.app";
+
+    const resetUrl = `${frontendOrigin}/restablecer-password?token=${token}`;
 
     await sendEmailNotification({
-      to: email,
+      to: normalizedEmail,
       subject: "Recuperación de Contraseña - Corazón Artesano",
-      html: `<p>Hola,</p><p>Has solicitado restablecer tu contraseña. Haz clic en el enlace para continuar:</p><a href="${resetUrl}">${resetUrl}</a>`,
-      text: `Has solicitado restablecer tu contraseña. Tu token de recuperación es: ${token}`,
+      html: `<p>Hola,</p><p>Has solicitado restablecer tu contraseña en Corazón Artesano. Haz clic en el siguiente enlace para continuar:</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>Este enlace caducará en 1 hora.</p>`,
+      text: `Has solicitado restablecer tu contraseña en Corazón Artesano. Haz clic en la siguiente URL: ${resetUrl}`,
     });
 
     return res.json({
-      message: "Hemos enviado las instrucciones de recuperación a tu correo electrónico.",
+      message: "Hemos verificado tu correo. Te enviamos las instrucciones de recuperación.",
       tokenPreview: token,
+      resetUrl,
     });
-  } catch (_error) {
+  } catch (error) {
+    console.error("Error en forgot-password:", error);
     return res.status(500).json({ message: "Error al solicitar recuperación de contraseña" });
   }
 });
@@ -707,17 +719,27 @@ app.post("/api/reset-password", async (req, res) => {
       return res.status(400).json({ message: "Token y nueva contraseña son requeridos" });
     }
 
+    if (password.length < 6) {
+      return res.status(400).json({ message: "La contraseña debe tener al menos 6 caracteres" });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     if (isUsingMemoryDb) {
-      const resetRecord = memoryDb.password_resets.find((r) => r.token === token);
-      if (!resetRecord || resetRecord.expiresAt < new Date()) {
-        return res.status(400).json({ message: "El enlace de recuperación es inválido o ha expirado" });
+      const resetIndex = memoryDb.password_resets.findIndex((r) => r.token === token);
+      if (resetIndex === -1 || memoryDb.password_resets[resetIndex].expiresAt < new Date()) {
+        return res.status(400).json({ message: "El enlace de recuperación es inválido o ha expirado. Por favor solicita uno nuevo." });
       }
+
+      const resetRecord = memoryDb.password_resets[resetIndex];
       const user = memoryDb.users.find((u) => u.email === resetRecord.email);
       if (user) {
         user.password = hashedPassword;
       }
+
+      // Eliminar el token consumido
+      memoryDb.password_resets.splice(resetIndex, 1);
+
       return res.json({ message: "Contraseña restablecida con éxito. Ya puedes iniciar sesión." });
     }
 
@@ -727,7 +749,7 @@ app.post("/api/reset-password", async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res.status(400).json({ message: "El enlace de recuperación es inválido o ha expirado" });
+      return res.status(400).json({ message: "El enlace de recuperación es inválido o ha expirado. Por favor solicita uno nuevo." });
     }
 
     const resetRecord = rows[0];
@@ -735,7 +757,8 @@ app.post("/api/reset-password", async (req, res) => {
     await pool.query("DELETE FROM password_resets WHERE email = ?", [resetRecord.email]);
 
     return res.json({ message: "Contraseña restablecida con éxito. Ya puedes iniciar sesión." });
-  } catch (_error) {
+  } catch (error) {
+    console.error("Error en reset-password:", error);
     return res.status(500).json({ message: "Error al restablecer la contraseña" });
   }
 });
