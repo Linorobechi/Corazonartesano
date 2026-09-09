@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
-import React from "react";
-import { FaHeart,FaUsers,FaMapMarkerAlt,FaArrowRight,FaMagic,} from "react-icons/fa";
+import { FaHeart, FaUsers, FaMapMarkerAlt, FaArrowRight, FaMagic } from "react-icons/fa";
 import { motion } from "framer-motion";
 import Footer from "../Components/Footer";
 import fondo from "../assets/Fondoinicio.jpeg";
@@ -15,9 +14,11 @@ import img6 from "../assets/6.jpeg";
 const images = [img1, img2, img3, img4, img5, img6];
 
 const fadeUp = {
-  hidden: { opacity: 0, y: 40 },show: {opacity: 1,y: 0,transition: { duration: 0.6 },},};
+  hidden: { opacity: 0, y: 40 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.6 } },
+};
 
-const stagger = {hidden: {},show: {transition: {staggerChildren: 0.2,},},};
+const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.2 } } };
 
 export default function Inicio() {
   return (
@@ -49,16 +50,22 @@ export default function Inicio() {
           </h1>
 
           <p className="text-gray-700 mb-8 leading-relaxed">
-            Conectamos artesanos locales con el mundo digital...
+            Conectamos artesanos locales de Sincelejo y la región Caribe con compradores de todo el país.
           </p>
 
           <div className="flex flex-col md:flex-row gap-4 justify-center">
-            <Link to="/productos"className="flex items-center gap-2 bg-[#8B5E3C] text-white px-6 py-3 rounded-lg hover:opacity-90">
-  Explorar Productos <FaArrowRight />
-</Link>
+            <Link
+              to="/productos"
+              className="flex items-center justify-center gap-2 bg-[#8B5E3C] text-white px-6 py-3 rounded-lg hover:opacity-90 transition font-semibold"
+            >
+              Explorar Productos <FaArrowRight />
+            </Link>
 
-          <Link to="/Capacitaciones"> 
-          <button className="bg-[#d2a679] text-[#3b2a1f] px-6 py-3 rounded-lg hover:opacity-90">Ver Capacitaciones</button></Link>
+            <Link to="/capacitaciones">
+              <button className="w-full bg-[#d2a679] text-[#3b2a1f] px-6 py-3 rounded-lg hover:opacity-90 transition font-semibold">
+                Ver Capacitaciones
+              </button>
+            </Link>
           </div>
         </motion.div>
       </section>
@@ -76,7 +83,7 @@ export default function Inicio() {
         </motion.h2>
 
         <p className="text-gray-600 max-w-2xl mx-auto mb-12">
-          Dignificamos el trabajo artesanal mediante herramientas digitales...
+          Dignificamos el trabajo artesanal mediante herramientas digitales de capacitación y comercio electrónico.
         </p>
 
         <motion.div
@@ -101,7 +108,7 @@ export default function Inicio() {
                 {i === 2 && "Capacitación Digital"}
               </h3>
               <p className="text-gray-600 text-sm">
-                Artesanías únicas hechas a mano...
+                Artesanías únicas hechas a mano por maestros creadores.
               </p>
             </motion.div>
           ))}
@@ -111,7 +118,6 @@ export default function Inicio() {
       {/* SECCIÓN 3 */}
       <section className="bg-[#f3ede7] py-16 px-6">
         <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-10 items-center">
-          
           <motion.div
             variants={fadeUp}
             initial="hidden"
@@ -124,12 +130,12 @@ export default function Inicio() {
               alt="Artesanías"
               className="w-full aspect-[4/3] rounded-2xl shadow-lg object-cover"
             />
-        
-        <Link to="/aleria">
-        <button className="absolute bottom-4 right-4 bg-white px-4 py-2 rounded-lg shadow text-sm">
-          Ver Galería Completa
-        </button>
-        </Link>
+
+            <Link to="/galeria">
+              <button className="absolute bottom-4 right-4 bg-white px-4 py-2 rounded-lg shadow text-sm font-semibold text-[#8b5e3c]">
+                Ver Galería Completa
+              </button>
+            </Link>
           </motion.div>
 
           <motion.div
@@ -143,15 +149,18 @@ export default function Inicio() {
             </h2>
 
             <p className="text-gray-700 mb-4">
-              Promovemos la sostenibilidad económica...
+              Promovemos la sostenibilidad económica y cultural preservando técnicas ancestrales.
             </p>
 
             <p className="text-gray-700 mb-6">
-              Nuestra plataforma conecta compradores...
+              Nuestra plataforma conecta compradores conscientes con artesanos tradicionales de Sucre.
             </p>
-            <Link to="/Nosotros"className="flex items-center gap-2 text-[#8B5E3C] font-medium hover:underline">
-  Conoce más sobre nosotros <FaArrowRight /></Link>
-            
+            <Link
+              to="/nosotros"
+              className="flex items-center gap-2 text-[#8B5E3C] font-medium hover:underline"
+            >
+              Conoce más sobre nosotros <FaArrowRight />
+            </Link>
           </motion.div>
         </div>
       </section>
@@ -164,7 +173,7 @@ export default function Inicio() {
           </h2>
 
           <p className="text-gray-600 mt-2 mb-10">
-            Explora la diversidad y belleza...
+            Explora la diversidad y belleza del arte artesanal caribeño.
           </p>
 
           <motion.div
@@ -174,7 +183,7 @@ export default function Inicio() {
             viewport={{ once: true }}
             className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6"
           >
-            {images.map((img, index) => (
+            {images.map((imgItem, index) => (
               <motion.div
                 key={index}
                 variants={fadeUp}
@@ -182,7 +191,7 @@ export default function Inicio() {
                 className="overflow-hidden rounded-xl shadow-md"
               >
                 <img
-                  src={img}
+                  src={imgItem}
                   alt={`artesania-${index}`}
                   className="w-full h-48 object-cover"
                 />
@@ -191,13 +200,11 @@ export default function Inicio() {
           </motion.div>
 
           <div className="mt-10">
-            
-
-        <Link to="/Galeria">
-          <button className="bg-[#8b5e3c] text-white px-6 py-3 rounded-lg shadow hover:bg-[#6f472c] transition">
-            Ver Galería Completa →
-          </button>
-        </Link>
+            <Link to="/galeria">
+              <button className="bg-[#8b5e3c] text-white px-6 py-3 rounded-lg shadow hover:bg-[#6f472c] transition font-semibold">
+                Ver Galería Completa →
+              </button>
+            </Link>
           </div>
         </div>
       </section>

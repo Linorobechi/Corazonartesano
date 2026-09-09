@@ -14,6 +14,8 @@ import Productos from "./pages/Productos.jsx";
 import Panel from "./pages/Panel.jsx";
 import Capacitaciones from "./pages/Capacitaciones.jsx";
 import CartDrawer from "./Components/CartDrawer.jsx";
+import Galeria from "./pages/Galeria.jsx";
+import Requisitos from "./pages/Requisitos.jsx";
 import ToastHost from "./Components/ToastHost.jsx";
 import { ProtectedRoute, PublicOnlyRoute, RoleRoute } from "./Components/AuthRoutes.jsx";
 
@@ -31,7 +33,8 @@ function App() {
           <Route path="/nosotros" element={<Nosotros />} />
           <Route path="/contacto" element={<Contacto />} />
           <Route path="/informacion-general" element={<InformacionGeneral />} />
-          <Route path="/requisitos" element={<InformacionGeneral />} />
+          <Route path="/requisitos" element={<Requisitos />} />
+          <Route path="/galeria" element={<Galeria />} />
           <Route path="/productos" element={<Productos />} />
 
           {/* Rutas de autenticación y recuperación (RF-02, RF-03) */}

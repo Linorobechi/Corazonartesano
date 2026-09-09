@@ -1,4 +1,4 @@
-import React from "react";
+
 import { motion } from "framer-motion";
 import Footer from "../Components/Footer";
 import { FaShieldAlt, FaTruck, FaGraduationCap, FaStore, FaQuestionCircle, FaUserCheck } from "react-icons/fa";

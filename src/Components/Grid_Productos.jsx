@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { FaStar, FaShoppingCart, FaHeart, FaEye, FaTimes } from "react-icons/fa";
+import { FaStar, FaShoppingCart, FaEye, FaTimes } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../context/CartContext";
 import ProductReviews from "./ProductReviews";

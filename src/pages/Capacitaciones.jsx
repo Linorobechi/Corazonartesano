@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Footer from "../Components/Footer";
 import {
@@ -21,24 +21,25 @@ export default function Capacitaciones() {
   const user = storedUser ? JSON.parse(storedUser) : null;
 
   useEffect(() => {
-    fetchCourses();
-  }, []);
+    let ignore = false;
+    fetch("/api/moodle/courses")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!ignore) {
+          setCourses(Array.isArray(data) ? data : []);
+        }
+      })
+      .catch(() => {
+        if (!ignore) setCourses([]);
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
 
-  const fetchCourses = async () => {
-    try {
-      const response = await fetch("/api/moodle/courses");
-      const data = await response.json();
-      if (Array.isArray(data)) {
-        setCourses(data);
-      } else {
-        setCourses([]);
-      }
-    } catch {
-      setCourses([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const handleEnroll = async (courseId) => {
     setEnrollingId(courseId);
@@ -54,8 +55,6 @@ export default function Capacitaciones() {
         },
         body: JSON.stringify({ courseId }),
       });
-
-      const data = await response.json();
 
       if (response.ok) {
         setNotification(`Inscripción exitosa en el curso. Se envió un correo con los accesos.`);

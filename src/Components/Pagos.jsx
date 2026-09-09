@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 export default function PagosSeguros() {
   return (
     <section className="bg-[#8B5E3C] text-white py-12 px-6 text-center">
@@ -5,7 +7,7 @@ export default function PagosSeguros() {
         
         {/* Título */}
         <h2 className="text-2xl md:text-3xl font-semibold mb-3">
-          Pagos Seguros
+          Pagos 100% Seguros
         </h2>
 
         {/* Descripción */}
@@ -15,43 +17,33 @@ export default function PagosSeguros() {
 
         {/* Botones con links */}
         <div className="flex flex-wrap justify-center gap-3">
-          
-          <a
-            href="https://TU-LINK-PSE.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-[#A97450] hover:bg-[#c18a65] transition px-4 py-2 rounded-md text-sm"
+          <Link
+            to="/checkout"
+            className="bg-[#A97450] hover:bg-[#c18a65] transition px-4 py-2 rounded-md text-sm font-semibold"
           >
-            PSE
-          </a>
+            Débito PSE
+          </Link>
 
-          <a
-            href="https://TU-LINK-TARJETA.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-[#A97450] hover:bg-[#c18a65] transition px-4 py-2 rounded-md text-sm"
+          <Link
+            to="/checkout"
+            className="bg-[#A97450] hover:bg-[#c18a65] transition px-4 py-2 rounded-md text-sm font-semibold"
           >
-            Tarjeta de Crédito
-          </a>
+            Tarjeta de Crédito / Débito
+          </Link>
 
-          <a
-            href="https://TU-LINK-PAYPAL.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-[#A97450] hover:bg-[#c18a65] transition px-4 py-2 rounded-md text-sm"
+          <Link
+            to="/checkout"
+            className="bg-[#A97450] hover:bg-[#c18a65] transition px-4 py-2 rounded-md text-sm font-semibold"
           >
-            PayPal
-          </a>
+            Nequi / Daviplata
+          </Link>
 
-          <a
-            href="https://TU-LINK-TRANSFERENCIA.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-[#A97450] hover:bg-[#c18a65] transition px-4 py-2 rounded-md text-sm"
+          <Link
+            to="/checkout"
+            className="bg-[#A97450] hover:bg-[#c18a65] transition px-4 py-2 rounded-md text-sm font-semibold"
           >
-            Transferencias
-          </a>
-
+            Transferencias Bancarias
+          </Link>
         </div>
       </div>
     </section>

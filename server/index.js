@@ -114,7 +114,7 @@ const authMiddleware = (req, res, next) => {
     const token = authHeader.slice(7);
     req.user = jwt.verify(token, JWT_SECRET);
     return next();
-  } catch (error) {
+  } catch (_error) {
     return res.status(401).json({ message: "Token inválido o expirado" });
   }
 };
@@ -373,7 +373,7 @@ app.get("/api/products", async (_req, res) => {
         rawPrecio: Number(product.precio),
       })),
     });
-  } catch (error) {
+  } catch (_error) {
     return res.status(500).json({ message: "No se pudieron cargar los productos" });
   }
 });
@@ -485,7 +485,7 @@ app.put("/api/products/:id", authMiddleware, requireRole(["artesano", "admin"]),
     );
 
     return res.json({ message: "Producto actualizado correctamente" });
-  } catch (error) {
+  } catch (_error) {
     return res.status(500).json({ message: "Error al actualizar producto" });
   }
 });
@@ -518,7 +518,7 @@ app.delete("/api/products/:id", authMiddleware, requireRole(["artesano", "admin"
 
     await pool.query("DELETE FROM products WHERE id = ?", [id]);
     return res.json({ message: "Producto eliminado correctamente" });
-  } catch (error) {
+  } catch (_error) {
     return res.status(500).json({ message: "Error al eliminar producto" });
   }
 });
@@ -641,7 +641,7 @@ app.post("/api/login", async (req, res) => {
       token,
       user: userPayload,
     });
-  } catch (error) {
+  } catch (_error) {
     return res.status(500).json({ message: "Error en inicio de sesión" });
   }
 });
@@ -695,7 +695,7 @@ app.post("/api/forgot-password", async (req, res) => {
       message: "Hemos enviado las instrucciones de recuperación a tu correo electrónico.",
       tokenPreview: token,
     });
-  } catch (error) {
+  } catch (_error) {
     return res.status(500).json({ message: "Error al solicitar recuperación de contraseña" });
   }
 });
@@ -735,7 +735,7 @@ app.post("/api/reset-password", async (req, res) => {
     await pool.query("DELETE FROM password_resets WHERE email = ?", [resetRecord.email]);
 
     return res.json({ message: "Contraseña restablecida con éxito. Ya puedes iniciar sesión." });
-  } catch (error) {
+  } catch (_error) {
     return res.status(500).json({ message: "Error al restablecer la contraseña" });
   }
 });
@@ -881,7 +881,7 @@ app.get("/api/orders", authMiddleware, async (req, res) => {
       [req.user.id]
     );
     return res.json({ orders });
-  } catch (error) {
+  } catch (_error) {
     return res.status(500).json({ message: "Error al consultar las compras" });
   }
 });
@@ -949,7 +949,7 @@ app.get("/api/moodle/courses", async (_req, res) => {
     ];
 
     return res.json(sampleCourses);
-  } catch (error) {
+  } catch (_error) {
     return res.status(500).json({ message: "Error al conectar con Moodle" });
   }
 });
@@ -961,7 +961,7 @@ app.post("/api/moodle/enroll", authMiddleware, requireRole(["artesano", "admin"]
       message: `Te has inscrito correctamente en el curso #${courseId}. Revisa tu correo o la plataforma Moodle.`,
       courseId,
     });
-  } catch (error) {
+  } catch (_error) {
     return res.status(500).json({ message: "No se pudo inscribir en el curso" });
   }
 });
@@ -981,7 +981,7 @@ app.get("/api/products/:id/reviews", async (req, res) => {
       [id]
     );
     return res.json({ reviews: rows });
-  } catch (error) {
+  } catch (_error) {
     return res.status(500).json({ message: "Error al obtener opiniones" });
   }
 });
@@ -1036,7 +1036,7 @@ app.post("/api/products/:id/reviews", authMiddleware, async (req, res) => {
     await pool.query("UPDATE products SET rating = ? WHERE id = ?", [avg, id]);
 
     return res.status(201).json({ message: "Opinión agregada exitosamente" });
-  } catch (error) {
+  } catch (_error) {
     return res.status(500).json({ message: "Error al guardar la opinión" });
   }
 });

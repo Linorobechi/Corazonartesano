@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import registerImg from "../assets/5.jpeg";
 import { motion } from "framer-motion";
 import Footer from "../Components/Footer";
 import { Link, useNavigate } from "react-router-dom";
-import { FaUser, FaStore, FaIdCard, FaLock, FaEnvelope } from "react-icons/fa";
+import { FaUser, FaStore } from "react-icons/fa";
 
 const emptyForm = {
   nombre: "",

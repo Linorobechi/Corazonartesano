@@ -1,11 +1,11 @@
-import React from "react";
 import Formulario from "../Components/Formulario";
 import { FaMapMarkerAlt, FaPhoneAlt, FaEnvelope } from "react-icons/fa";
 import contacto from "../assets/contacto.jpg";
 import Footer from "../Components/Footer";
 import { motion } from "framer-motion";
-const MotionLink = motion(Link);
 import { Link } from "react-router-dom";
+
+const MotionLink = motion(Link);
 
 const fadeUp = {
   hidden: { opacity: 0, y: 40 },
@@ -76,8 +76,8 @@ export default function ContactSection() {
                 <FaEnvelope className="text-[#8b5e3c] mt-1" />
                 <p>
                   <strong>Correo Electrónico:</strong><br />
-                  info@crozanartesano.com<br />
-                  ventas@crozanartesano.com
+                  info@corazonartesano.com<br />
+                  ventas@corazonartesano.com
                 </p>
               </motion.div>
 
@@ -148,7 +148,7 @@ export default function ContactSection() {
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             
             <MotionLink
-              to="/Register"
+              to="/register"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="bg-white text-[#8b5e3c] px-6 py-3 rounded-md font-medium hover:bg-[#f1e7de] transition inline-block text-center"
@@ -156,11 +156,15 @@ export default function ContactSection() {
               Registrarme como Artesano
             </MotionLink>
 
-                  <Link to="/Requisitos"><motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-          className="border border-white px-6 py-3 rounded-md hover:bg-white hover:text-[#8b5e3c] transition">
-          Ver Requisitos
-        </motion.button>
-      </Link>
+            <Link to="/requisitos">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="border border-white px-6 py-3 rounded-md hover:bg-white hover:text-[#8b5e3c] transition font-medium"
+              >
+                Ver Requisitos
+              </motion.button>
+            </Link>
           </div>
         </motion.div>
       </section>

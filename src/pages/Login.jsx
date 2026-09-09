@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import loginImg from "../assets/6.jpeg";
 import { motion } from "framer-motion";
 import Footer from "../Components/Footer";

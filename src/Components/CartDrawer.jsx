@@ -1,4 +1,4 @@
-import React from "react";
+
 import { useCart } from "../context/CartContext";
 import { FaTrash, FaTimes, FaShoppingBag, FaArrowRight } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";

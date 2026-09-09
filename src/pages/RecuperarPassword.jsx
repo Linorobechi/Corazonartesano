@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import Footer from "../Components/Footer";
 import { Link } from "react-router-dom";

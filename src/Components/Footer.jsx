@@ -1,4 +1,5 @@
 import { Heart } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export default function Footer() {
   return (
@@ -23,13 +24,38 @@ export default function Footer() {
 
           {/* Columna 2 */}
           <div>
-            <h3 className="font-semibold text-lg mb-4">Enlaces</h3>
+            <h3 className="font-semibold text-lg mb-4">Enlaces Rápidos</h3>
             <ul className="space-y-2 text-[#f5e6d3]/80">
-              <li className="hover:text-white cursor-pointer">Productos</li>
-              <li className="hover:text-white cursor-pointer">Galería</li>
-              <li className="hover:text-white cursor-pointer">Capacitaciones</li>
-              <li className="hover:text-white cursor-pointer">Nosotros</li>
-              <li className="hover:text-white cursor-pointer">Contacto</li>
+              <li>
+                <Link to="/productos" className="hover:text-white transition">
+                  Productos
+                </Link>
+              </li>
+              <li>
+                <Link to="/galeria" className="hover:text-white transition">
+                  Galería
+                </Link>
+              </li>
+              <li>
+                <Link to="/capacitaciones" className="hover:text-white transition">
+                  Capacitaciones
+                </Link>
+              </li>
+              <li>
+                <Link to="/nosotros" className="hover:text-white transition">
+                  Quiénes Somos
+                </Link>
+              </li>
+              <li>
+                <Link to="/contacto" className="hover:text-white transition">
+                  Contacto
+                </Link>
+              </li>
+              <li>
+                <Link to="/requisitos" className="hover:text-white transition">
+                  Requisitos de Acceso
+                </Link>
+              </li>
             </ul>
           </div>
 

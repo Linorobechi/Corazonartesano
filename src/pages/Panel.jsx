@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Footer from "../Components/Footer";
-import { FaPlus, FaEdit, FaTrash, FaStore, FaImage } from "react-icons/fa";
+import { FaPlus, FaEdit, FaTrash, FaStore } from "react-icons/fa";
 
 const emptyForm = {
   nombre: "",
@@ -26,11 +26,7 @@ export default function Panel() {
   const [editForm, setEditForm] = useState(emptyForm);
   const [editImageFile, setEditImageFile] = useState(null);
 
-  useEffect(() => {
-    refreshProducts();
-  }, []);
-
-  const refreshProducts = async () => {
+  const refreshProducts = useCallback(async () => {
     setLoadingProducts(true);
     try {
       const response = await fetch("/api/products");
@@ -44,7 +40,28 @@ export default function Panel() {
     } finally {
       setLoadingProducts(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    let ignore = false;
+    fetch("/api/products")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!ignore) {
+          setProducts(data.products || []);
+        }
+      })
+      .catch((loadError) => {
+        if (!ignore) setError(loadError.message);
+      })
+      .finally(() => {
+        if (!ignore) setLoadingProducts(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const handleChange = (e) => {
     if (e.target.name === "image_file") {

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { FaStar, FaCommentAlt, FaUserCheck, FaPaperPlane } from "react-icons/fa";
+import { useState, useEffect, useCallback } from "react";
+import { FaStar, FaUserCheck, FaPaperPlane } from "react-icons/fa";
 
 export default function ProductReviews({ productId, productName }) {
   const [reviews, setReviews] = useState([]);
@@ -13,11 +13,7 @@ export default function ProductReviews({ productId, productName }) {
   const storedUser = localStorage.getItem("auth_user");
   const user = storedUser ? JSON.parse(storedUser) : null;
 
-  useEffect(() => {
-    loadReviews();
-  }, [productId]);
-
-  const loadReviews = async () => {
+  const loadReviews = useCallback(async () => {
     try {
       const response = await fetch(`/api/products/${productId}/reviews`);
       const data = await response.json();
@@ -27,7 +23,25 @@ export default function ProductReviews({ productId, productName }) {
     } catch {
       setReviews([]);
     }
-  };
+  }, [productId]);
+
+  useEffect(() => {
+    let ignore = false;
+    fetch(`/api/products/${productId}/reviews`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!ignore && data.reviews) {
+          setReviews(data.reviews);
+        }
+      })
+      .catch(() => {
+        if (!ignore) setReviews([]);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [productId]);
 
   const handleSubmitReview = async (e) => {
     e.preventDefault();

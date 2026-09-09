@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useCart } from "../context/CartContext";
 import { motion } from "framer-motion";
 import Footer from "../Components/Footer";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   FaCreditCard,
   FaUniversity,
@@ -16,7 +16,6 @@ import {
 
 export default function Checkout() {
   const { cartItems, subtotal, tax, shipping, total, clearCart, formatCurrency } = useCart();
-  const navigate = useNavigate();
 
   const storedUser = localStorage.getItem("auth_user");
   const user = storedUser ? JSON.parse(storedUser) : null;
