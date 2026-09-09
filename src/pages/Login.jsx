@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import loginImg from "../assets/6.jpeg"; 
+import loginImg from "../assets/6.jpeg";
 import { motion } from "framer-motion";
 import Footer from "../Components/Footer";
 import { Link, useNavigate } from "react-router-dom";
@@ -9,7 +9,7 @@ const emptyForm = {
   password: "",
 };
 
-const API_URL = import.meta.env.VITE_API_URL || "https://corazonartesano.onrender.com";
+const API_URL = import.meta.env.VITE_API_URL || "";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -34,17 +34,13 @@ export default function Login() {
       try {
         response = await fetch(`${API_URL}/api/login`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(form),
         });
       } catch {
         response = await fetch("/api/login", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(form),
         });
       }
@@ -66,126 +62,124 @@ export default function Login() {
           },
         })
       );
+
       setForm(emptyForm);
-      navigate("/");
+
+      // Redirección según rol (RF-04)
+      if (data.user.rol === "artesano") {
+        navigate("/agregar-productos");
+      } else {
+        navigate("/");
+      }
     } catch (loginError) {
       setError(loginError.message);
-      window.dispatchEvent(
-        new CustomEvent("app-notification", {
-          detail: {
-            type: "error",
-            message: loginError.message,
-          },
-        })
-      );
     } finally {
       setLoading(false);
     }
-
   };
 
   return (
-
- <> <section className="bg-[#f5f1ec] py-20 px-4">
-  <div className="flex justify-center">
-
-    <motion.div
-      initial={{ opacity: 0, y: 50 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6 }}
-      className="grid md:grid-cols-2 bg-white rounded-2xl shadow-xl overflow-hidden max-w-4xl w-full"
-    >
-      
-      {/* IMAGEN */}
-      <motion.div
-        className="hidden md:block overflow-hidden"
-        whileHover={{ scale: 1.05 }}
-      >
-        <img
-          src={loginImg}
-          alt="login"
-          className="h-full w-full object-cover"
-        />
-      </motion.div>
-
-      {/* FORMULARIO */}
-      <div className="p-8 flex flex-col justify-center">
-        
-        <motion.h2
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="text-2xl font-semibold mb-6 text-[#8b5e3c]"
-        >
-          Iniciar Sesión
-        </motion.h2>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-
-          <motion.input
-            whileFocus={{ scale: 1.02 }}
-            type="text"
-            name="identifier"
-            placeholder="Identificación o correo"
-            value={form.identifier}
-            onChange={handleChange}
-            className="w-full p-3 rounded-md bg-[#f1ece7] outline-none focus:ring-2 focus:ring-[#8b5e3c]"
-          />
-
-          <motion.input
-            whileFocus={{ scale: 1.02 }}
-            type="password"
-            name="password"
-            placeholder="Contraseña"
-            value={form.password}
-            onChange={handleChange}
-            className="w-full p-3 rounded-md bg-[#f1ece7] outline-none focus:ring-2 focus:ring-[#8b5e3c]"
-          />
-
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            type="submit"
-            className="w-full bg-[#8b5e3c] text-white py-3 rounded-md hover:bg-[#754d31]"
-            disabled={loading}
+    <>
+      <section className="bg-[#f5f1ec] pt-24 pb-20 px-4">
+        <div className="flex justify-center">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="grid md:grid-cols-2 bg-white rounded-3xl shadow-xl overflow-hidden max-w-4xl w-full border border-[#eae0d5]"
           >
-            {loading ? "Ingresando..." : "Iniciar Sesión"}
-          </motion.button>
+            {/* IMAGEN */}
+            <div className="hidden md:block overflow-hidden relative">
+              <img
+                src={loginImg}
+                alt="login"
+                className="h-full w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-8 text-white">
+                <div>
+                  <h3 className="font-bold text-xl">Acceso a Corazón Artesano</h3>
+                  <p className="text-xs opacity-90">
+                    Gestiona tu catálogo artesanal o realiza compras 100% seguras.
+                  </p>
+                </div>
+              </div>
+            </div>
 
-          {error && (
-            <p className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
-              {error}
-            </p>
-          )}
+            {/* FORMULARIO */}
+            <div className="p-8 flex flex-col justify-center space-y-4">
+              <div>
+                <h2 className="text-2xl font-bold text-[#8b5e3c]">Iniciar Sesión</h2>
+                <p className="text-xs text-gray-500 mt-1">
+                  Ingresa tu correo o número de documento para acceder.
+                </p>
+              </div>
 
-        </form>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Documento o Correo Electrónico
+                  </label>
+                  <input
+                    type="text"
+                    name="identifier"
+                    placeholder="Documento o Correo"
+                    value={form.identifier}
+                    onChange={handleChange}
+                    required
+                    className="w-full p-3 rounded-xl bg-[#f1ece7] text-xs outline-none focus:ring-2 focus:ring-[#8b5e3c]"
+                  />
+                </div>
 
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="text-sm mt-4 text-gray-500"
-        >
-          ¿No tienes cuenta?{" "}
-          <Link 
-            to="/register" 
-            className="text-[#8b5e3c] hover:underline"
-          >
-            Regístrate
-          </Link>
-        </motion.p>
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block text-xs font-semibold text-gray-700">
+                      Contraseña
+                    </label>
+                    <Link
+                      to="/recuperar-password"
+                      className="text-[11px] text-[#8b5e3c] font-semibold hover:underline"
+                    >
+                      ¿Olvidaste tu contraseña? (RF-03)
+                    </Link>
+                  </div>
+                  <input
+                    type="password"
+                    name="password"
+                    placeholder="••••••••"
+                    value={form.password}
+                    onChange={handleChange}
+                    required
+                    className="w-full p-3 rounded-xl bg-[#f1ece7] text-xs outline-none focus:ring-2 focus:ring-[#8b5e3c]"
+                  />
+                </div>
 
-      </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-[#8b5e3c] text-white py-3 rounded-xl hover:bg-[#754d31] transition font-bold text-xs shadow-md disabled:opacity-70"
+                >
+                  {loading ? "Ingresando..." : "Iniciar Sesión"}
+                </button>
 
-    </motion.div>
+                {error && (
+                  <p className="text-xs text-red-600 bg-red-50 p-3 rounded-xl border border-red-200">
+                    {error}
+                  </p>
+                )}
+              </form>
 
-  </div>
- 
-</section>
+              <p className="text-xs text-center text-gray-500 pt-2 border-t">
+                ¿No tienes cuenta aún?{" "}
+                <Link to="/register" className="text-[#8b5e3c] font-bold hover:underline">
+                  Regístrate aquí
+                </Link>
+              </p>
+            </div>
+          </motion.div>
+        </div>
+      </section>
 
-  
-  <Footer />
-</>
-  
+      <Footer />
+    </>
   );
 }

@@ -3,16 +3,19 @@ import registerImg from "../assets/5.jpeg";
 import { motion } from "framer-motion";
 import Footer from "../Components/Footer";
 import { Link, useNavigate } from "react-router-dom";
-
-const API_URL = import.meta.env.VITE_API_URL || "https://corazonartesano.onrender.com";
+import { FaUser, FaStore, FaIdCard, FaLock, FaEnvelope } from "react-icons/fa";
 
 const emptyForm = {
   nombre: "",
   email: "",
+  tipo_documento: "CC",
   identificacion: "",
   password: "",
   confirmPassword: "",
+  rol: "comprador", // default role (RF-02)
 };
+
+const API_URL = import.meta.env.VITE_API_URL || "";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -33,22 +36,29 @@ export default function Register() {
     setError("");
     setSuccess("");
 
+    if (!form.nombre || !form.email || !form.identificacion || !form.password) {
+      setError("Todos los campos obligatorios deben diligenciarse.");
+      return;
+    }
+
     if (form.password !== form.confirmPassword) {
-      setError("Las contraseñas no coinciden");
+      setError("Las contraseñas no coinciden.");
       return;
     }
 
     setLoading(true);
 
     try {
-      let response;
       const bodyData = JSON.stringify({
         nombre: form.nombre,
         email: form.email,
+        tipo_documento: form.tipo_documento,
         identificacion: form.identificacion,
         password: form.password,
+        rol: form.rol,
       });
 
+      let response;
       try {
         response = await fetch(`${API_URL}/api/register`, {
           method: "POST",
@@ -76,26 +86,23 @@ export default function Register() {
         new CustomEvent("app-notification", {
           detail: {
             type: "success",
-            message: "Cuenta creada correctamente",
+            message: `Cuenta de ${data.user.rol === "artesano" ? "Artesano" : "Comprador"} creada exitosamente`,
           },
         })
       );
 
-      setSuccess("Cuenta creada correctamente. Ya puedes iniciar sesión.");
+      setSuccess("Cuenta creada correctamente. Redirigiendo...");
       setForm(emptyForm);
+
       setTimeout(() => {
-        navigate("/");
-      }, 1200);
+        if (data.user.rol === "artesano") {
+          navigate("/agregar-productos");
+        } else {
+          navigate("/");
+        }
+      }, 1000);
     } catch (registerError) {
       setError(registerError.message);
-      window.dispatchEvent(
-        new CustomEvent("app-notification", {
-          detail: {
-            type: "error",
-            message: registerError.message,
-          },
-        })
-      );
     } finally {
       setLoading(false);
     }
@@ -103,135 +110,175 @@ export default function Register() {
 
   return (
     <>
-      <section className="bg-[#f5f1ec] py-20 px-4">
+      <section className="bg-[#f5f1ec] pt-24 pb-20 px-4">
         <div className="flex justify-center">
-
           <motion.div
-            initial={{ opacity: 0, y: 50 }}
+            initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="grid md:grid-cols-2 bg-white rounded-2xl shadow-xl overflow-hidden max-w-4xl w-full"
+            transition={{ duration: 0.5 }}
+            className="grid md:grid-cols-2 bg-white rounded-3xl shadow-xl overflow-hidden max-w-4xl w-full border border-[#eae0d5]"
           >
-
             {/* FORMULARIO */}
-            <div className="p-8 flex flex-col justify-center">
+            <div className="p-8 flex flex-col justify-center space-y-4">
+              <div>
+                <h2 className="text-2xl font-bold text-[#8b5e3c]">Crear Cuenta</h2>
+                <p className="text-xs text-gray-500 mt-1">
+                  Regístrate para comprar piezas artesanales o vender tus creaciones (RF-02).
+                </p>
+              </div>
 
-              <motion.h2
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="text-2xl font-semibold mb-6 text-[#8b5e3c]"
-              >
-                Crear Cuenta
-              </motion.h2>
+              {/* Selector de Rol (RF-02) */}
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold text-gray-700">
+                  Selecciona tu Rol en la Plataforma:
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, rol: "comprador" })}
+                    className={`p-3 rounded-2xl border flex items-center justify-center gap-2 text-xs font-semibold transition ${
+                      form.rol === "comprador"
+                        ? "border-[#8b5e3c] bg-[#fbf7f3] text-[#8b5e3c]"
+                        : "border-gray-200 text-gray-500 hover:bg-gray-50"
+                    }`}
+                  >
+                    <FaUser /> Comprador / Cliente
+                  </button>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, rol: "artesano" })}
+                    className={`p-3 rounded-2xl border flex items-center justify-center gap-2 text-xs font-semibold transition ${
+                      form.rol === "artesano"
+                        ? "border-[#8b5e3c] bg-[#fbf7f3] text-[#8b5e3c]"
+                        : "border-gray-200 text-gray-500 hover:bg-gray-50"
+                    }`}
+                  >
+                    <FaStore /> Artesano Creador
+                  </button>
+                </div>
+              </div>
 
-                <motion.input
-                  whileFocus={{ scale: 1.02 }}
-                  type="text"
-                  name="nombre"
-                  placeholder="Nombre completo"
-                  value={form.nombre}
-                  onChange={handleChange}
-                  className="w-full p-3 rounded-md bg-[#f1ece7] outline-none focus:ring-2 focus:ring-[#8b5e3c]"
-                />
+              <form onSubmit={handleSubmit} className="space-y-3">
+                <div>
+                  <input
+                    type="text"
+                    name="nombre"
+                    placeholder="Nombre completo"
+                    value={form.nombre}
+                    onChange={handleChange}
+                    required
+                    className="w-full p-3 rounded-xl bg-[#f1ece7] text-xs outline-none focus:ring-2 focus:ring-[#8b5e3c]"
+                  />
+                </div>
 
-                <motion.input
-                  whileFocus={{ scale: 1.02 }}
-                  type="email"
-                  name="email"
-                  placeholder="Correo electrónico"
-                  value={form.email}
-                  onChange={handleChange}
-                  className="w-full p-3 rounded-md bg-[#f1ece7] outline-none focus:ring-2 focus:ring-[#8b5e3c]"
-                />
+                <div>
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="Correo electrónico"
+                    value={form.email}
+                    onChange={handleChange}
+                    required
+                    className="w-full p-3 rounded-xl bg-[#f1ece7] text-xs outline-none focus:ring-2 focus:ring-[#8b5e3c]"
+                  />
+                </div>
 
-                <motion.input
-                  whileFocus={{ scale: 1.02 }}
-                  type="text"
-                  name="identificacion"
-                  placeholder="Identificación"
-                  value={form.identificacion}
-                  onChange={handleChange}
-                  className="w-full p-3 rounded-md bg-[#f1ece7] outline-none focus:ring-2 focus:ring-[#8b5e3c]"
-                />
+                {/* Tipo de Documento + Número (RF-02) */}
+                <div className="grid grid-cols-3 gap-2">
+                  <select
+                    name="tipo_documento"
+                    value={form.tipo_documento}
+                    onChange={handleChange}
+                    className="col-span-1 p-3 rounded-xl bg-[#f1ece7] text-xs outline-none focus:ring-2 focus:ring-[#8b5e3c] font-semibold text-gray-700"
+                  >
+                    <option value="CC">CC</option>
+                    <option value="CE">CE</option>
+                    <option value="NIT">NIT</option>
+                    <option value="Pasaporte">Pasaporte</option>
+                  </select>
 
-                <motion.input
-                  whileFocus={{ scale: 1.02 }}
-                  type="password"
-                  name="password"
-                  placeholder="Contraseña"
-                  value={form.password}
-                  onChange={handleChange}
-                  className="w-full p-3 rounded-md bg-[#f1ece7] outline-none focus:ring-2 focus:ring-[#8b5e3c]"
-                />
+                  <input
+                    type="text"
+                    name="identificacion"
+                    placeholder="N° de Documento"
+                    value={form.identificacion}
+                    onChange={handleChange}
+                    required
+                    className="col-span-2 p-3 rounded-xl bg-[#f1ece7] text-xs outline-none focus:ring-2 focus:ring-[#8b5e3c]"
+                  />
+                </div>
 
-                <motion.input
-                  whileFocus={{ scale: 1.02 }}
-                  type="password"
-                  name="confirmPassword"
-                  placeholder="Confirmar contraseña"
-                  value={form.confirmPassword}
-                  onChange={handleChange}
-                  className="w-full p-3 rounded-md bg-[#f1ece7] outline-none focus:ring-2 focus:ring-[#8b5e3c]"
-                />
+                <div>
+                  <input
+                    type="password"
+                    name="password"
+                    placeholder="Contraseña"
+                    value={form.password}
+                    onChange={handleChange}
+                    required
+                    className="w-full p-3 rounded-xl bg-[#f1ece7] text-xs outline-none focus:ring-2 focus:ring-[#8b5e3c]"
+                  />
+                </div>
 
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                <div>
+                  <input
+                    type="password"
+                    name="confirmPassword"
+                    placeholder="Confirmar contraseña"
+                    value={form.confirmPassword}
+                    onChange={handleChange}
+                    required
+                    className="w-full p-3 rounded-xl bg-[#f1ece7] text-xs outline-none focus:ring-2 focus:ring-[#8b5e3c]"
+                  />
+                </div>
+
+                <button
                   type="submit"
-                  className="w-full bg-[#8b5e3c] text-white py-3 rounded-md hover:bg-[#754d31]"
                   disabled={loading}
+                  className="w-full bg-[#8b5e3c] text-white py-3 rounded-xl hover:bg-[#754d31] transition font-bold text-xs shadow-md disabled:opacity-70"
                 >
-                  {loading ? "Creando cuenta..." : "Registrarse"}
-                </motion.button>
+                  {loading ? "Creando cuenta..." : `Registrarme como ${form.rol === "artesano" ? "Artesano" : "Comprador"}`}
+                </button>
 
                 {error && (
-                  <p className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
+                  <p className="text-xs text-red-600 bg-red-50 p-3 rounded-xl border border-red-200">
                     {error}
                   </p>
                 )}
 
                 {success && (
-                  <p className="text-sm text-green-700 bg-green-50 p-3 rounded-md">
+                  <p className="text-xs text-green-700 bg-green-50 p-3 rounded-xl border border-green-200">
                     {success}
                   </p>
                 )}
-
               </form>
 
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
-                className="text-sm mt-4 text-gray-500"
-              >
+              <p className="text-xs text-center text-gray-500 pt-2 border-t">
                 ¿Ya tienes cuenta?{" "}
-                <Link
-                  to="/login"
-                  className="text-[#8b5e3c] hover:underline"
-                >
+                <Link to="/login" className="text-[#8b5e3c] font-bold hover:underline">
                   Inicia sesión
                 </Link>
-              </motion.p>
-
+              </p>
             </div>
 
             {/* IMAGEN */}
-            <motion.div
-              className="hidden md:block overflow-hidden"
-              whileHover={{ scale: 1.05 }}
-            >
+            <div className="hidden md:block overflow-hidden relative">
               <img
                 src={registerImg}
-                alt="registro"
+                alt="registro artesanal"
                 className="h-full w-full object-cover"
               />
-            </motion.div>
-
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-8 text-white">
+                <div>
+                  <h3 className="font-bold text-xl">Artesanías con Historia</h3>
+                  <p className="text-xs opacity-90">
+                    Conectando raíces colombianas con compradores de todo el mundo.
+                  </p>
+                </div>
+              </div>
+            </div>
           </motion.div>
-
         </div>
       </section>
 

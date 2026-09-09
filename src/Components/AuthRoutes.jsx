@@ -1,10 +1,22 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 
-const getAuthState = () => Boolean(localStorage.getItem("auth_token"));
+const getAuthState = () => {
+  const token = localStorage.getItem("auth_token");
+  const storedUser = localStorage.getItem("auth_user");
+  let user = null;
+  if (storedUser) {
+    try {
+      user = JSON.parse(storedUser);
+    } catch {
+      user = null;
+    }
+  }
+  return { isAuthenticated: Boolean(token), user };
+};
 
 export function ProtectedRoute({ children }) {
   const location = useLocation();
-  const isAuthenticated = getAuthState();
+  const { isAuthenticated } = getAuthState();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
@@ -13,8 +25,25 @@ export function ProtectedRoute({ children }) {
   return children ?? <Outlet />;
 }
 
+export function RoleRoute({ allowedRoles, children }) {
+  const location = useLocation();
+  const { isAuthenticated, user } = getAuthState();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
+
+  const userRole = user?.rol || "comprador";
+  if (!allowedRoles.includes(userRole) && userRole !== "admin") {
+    // Redirect if role is not authorized for this private module (RF-04)
+    return <Navigate to="/" replace />;
+  }
+
+  return children ?? <Outlet />;
+}
+
 export function PublicOnlyRoute({ children }) {
-  const isAuthenticated = getAuthState();
+  const { isAuthenticated } = getAuthState();
 
   if (isAuthenticated) {
     return <Navigate to="/" replace />;
