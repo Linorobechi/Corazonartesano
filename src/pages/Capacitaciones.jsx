@@ -110,7 +110,7 @@ export default function Capacitaciones() {
 
             <div className="flex flex-col items-center gap-2">
               <a
-                href="https://corazonartesano.moodlecloud.com/login/index.php"
+                href="https://corazonartesano.gnomio.com/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="bg-[#8b5e3c] text-white px-6 py-3.5 rounded-2xl font-semibold text-sm hover:bg-[#754d31] transition shadow-md flex items-center gap-2 text-center"
