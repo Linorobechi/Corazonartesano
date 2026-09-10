@@ -144,7 +144,7 @@ export default function CartDrawer() {
               )}
             </div>
 
-            {/* Footer Summary (RF-09) */}
+            {/* Footer Summary */}
             {cartItems.length > 0 && (
               <div className="p-5 bg-[#faf7f2] border-t border-[#ede3d8] space-y-3">
                 <div className="space-y-1.5 text-xs text-gray-600">

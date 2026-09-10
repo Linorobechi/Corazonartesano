@@ -441,7 +441,7 @@ export default function Perfil() {
                     </p>
                   </div>
                   <span className="text-xs font-semibold text-[#8b5e3c] bg-[#fbf7f3] px-3 py-1 rounded-full border border-[#eee3d7]">
-                    RF-02 Verificado
+                    Cuenta Verificada
                   </span>
                 </div>
 

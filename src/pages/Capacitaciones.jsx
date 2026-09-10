@@ -82,7 +82,7 @@ export default function Capacitaciones() {
           >
             <div className="space-y-3 max-w-2xl">
               <div className="inline-flex items-center gap-2 bg-[#f1ece7] text-[#8b5e3c] px-3.5 py-1 rounded-full text-xs font-semibold">
-                <FaGraduationCap className="text-base" /> Plataforma Moodle para Artesanos (RF-08)
+                <FaGraduationCap className="text-base" /> Plataforma Moodle para Artesanos
               </div>
               <h1 className="text-3xl font-bold text-[#8b5e3c]">
                 Capacitaciones y Formación Artesanal

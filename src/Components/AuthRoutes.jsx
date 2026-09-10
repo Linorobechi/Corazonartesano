@@ -35,7 +35,7 @@ export function RoleRoute({ allowedRoles, children }) {
 
   const userRole = user?.rol || "comprador";
   if (!allowedRoles.includes(userRole) && userRole !== "admin") {
-    // Redirect if role is not authorized for this private module (RF-04)
+    // Redirect if role is not authorized for this private module
     return <Navigate to="/" replace />;
   }
 

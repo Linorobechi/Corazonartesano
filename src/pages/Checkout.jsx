@@ -125,7 +125,7 @@ export default function Checkout() {
           </div>
 
           {result ? (
-            /* PAYMENT RESULT MODAL / VIEW (RF-07, RF-10) */
+            /* PAYMENT RESULT MODAL / VIEW */
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -170,7 +170,7 @@ export default function Checkout() {
                   <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl flex items-center gap-3 text-left text-xs text-blue-800">
                     <FaEnvelope className="text-xl flex-shrink-0" />
                     <div>
-                      <p className="font-semibold">Notificación Enviada (RF-10)</p>
+                      <p className="font-semibold">Notificación Enviada</p>
                       <p>
                         Se ha enviado el comprobante oficial de pago aprobado al correo:{" "}
                         <strong>{result.emailSentTo}</strong>
@@ -206,7 +206,7 @@ export default function Checkout() {
                   <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3 text-left text-xs text-red-800">
                     <FaEnvelope className="text-xl flex-shrink-0" />
                     <div>
-                      <p className="font-semibold">Notificación de Rechazo Enviada (RF-10)</p>
+                      <p className="font-semibold">Notificación de Rechazo Enviada</p>
                       <p>
                         Se envió la notificación al correo: <strong>{result.emailSentTo}</strong>
                       </p>
@@ -399,7 +399,7 @@ export default function Checkout() {
                 </form>
               </div>
 
-              {/* Order Summary Sidebar (RF-09) */}
+              {/* Order Summary Sidebar */}
               <div className="bg-white p-6 rounded-3xl shadow-sm border border-[#eae0d5] space-y-4 h-fit">
                 <h3 className="text-lg font-bold text-gray-800 border-b pb-3">Resumen de la Orden</h3>
 

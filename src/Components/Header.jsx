@@ -54,7 +54,6 @@ function Header() {
     };
   }, []);
 
-  // RF-05: EXPLICIT LOGOUT
   const handleLogout = () => {
     localStorage.removeItem("auth_token");
     localStorage.removeItem("auth_user");
@@ -91,7 +90,6 @@ function Header() {
     return parts[0].substring(0, 2).toUpperCase();
   };
 
-  // RF-01: Public Links accessible without prior authentication
   const publicLinks = [
     { to: "/", label: "Inicio" },
     { to: "/nosotros", label: "Quiénes Somos" },
@@ -105,7 +103,12 @@ function Header() {
     { to: "/register", label: "Registrarse" },
   ];
 
-  const isArtesano = user?.rol === "artesano" || user?.rol === "admin";
+  const isAdmin = user?.rol === "admin";
+  const isArtesano = user?.rol === "artesano";
+
+  const visiblePublicLinks = isAdmin
+    ? [{ to: "/", label: "Inicio" }]
+    : publicLinks;
 
   return (
     <header className="fixed top-0 left-0 w-full z-30 bg-white/90 backdrop-blur-md shadow-sm border-b border-[#f1ece7]">
@@ -160,9 +163,9 @@ function Header() {
           </button>
         </div>
 
-        {/* Desktop Navigation (RF-01, RF-04) */}
+        {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-6">
-          {publicLinks.map(({ to, label }) => (
+          {visiblePublicLinks.map(({ to, label }) => (
             <NavLink key={to} to={to} className={linkClass}>
               {({ isActive }) => (
                 <span className="relative">
@@ -175,10 +178,10 @@ function Header() {
             </NavLink>
           ))}
 
-          {/* Role Specific Actions (RF-04) */}
+          {/* Role Specific Actions */}
           {isAuthenticated ? (
             <>
-              {user?.rol === "admin" && (
+              {isAdmin && (
                 <NavLink to="/admin" className={linkClass}>
                   <span className="flex items-center gap-1 font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 px-3 py-1 rounded-xl border border-amber-200 shadow-sm transition">
                     <FaCrown className="text-amber-600" /> Panel Administrador
@@ -201,7 +204,7 @@ function Header() {
                 </>
               )}
 
-              {/* Shopping Cart Drawer Trigger (RF-09) */}
+              {/* Shopping Cart Drawer Trigger */}
               <button
                 onClick={() => setIsCartOpen(true)}
                 className="relative p-2 text-[#7a4b2c] hover:bg-[#fbf7f3] rounded-full transition"
@@ -217,7 +220,7 @@ function Header() {
 
               <div className="h-4 w-[1px] bg-gray-200" />
 
-              {/* Artisan / User Profile Link & Avatar Badge */}
+              {/* User Profile Link & Avatar Badge */}
               <div className="flex items-center gap-3">
                 <NavLink
                   to="/perfil"
@@ -241,12 +244,12 @@ function Header() {
                   </div>
                 </NavLink>
 
-                {/* RF-05: Explicit Logout */}
+                {/* Explicit Logout */}
                 <button
                   type="button"
                   onClick={handleLogout}
                   className="flex items-center gap-1 text-xs font-bold text-red-600 hover:text-red-800 transition py-1.5 px-2.5 rounded-lg hover:bg-red-50"
-                  title="Cerrar sesión explícitamente"
+                  title="Cerrar sesión"
                 >
                   <FaSignOutAlt />
                   Salir
@@ -289,7 +292,7 @@ function Header() {
       {open && (
         <div className="md:hidden bg-white shadow-lg border-b px-6 py-4 space-y-3">
           <nav className="flex flex-col gap-3">
-            {publicLinks.map(({ to, label }) => (
+            {visiblePublicLinks.map(({ to, label }) => (
               <NavLink
                 key={to}
                 to={to}
@@ -320,7 +323,7 @@ function Header() {
                   </div>
                 </NavLink>
 
-                {user?.rol === "admin" && (
+                {isAdmin && (
                   <NavLink
                     to="/admin"
                     onClick={() => setOpen(false)}

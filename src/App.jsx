@@ -30,7 +30,7 @@ function App() {
         <CartDrawer />
 
         <Routes>
-          {/* RF-01: Secciones Informativas Públicas de libre acceso sin autenticación */}
+          {/* Secciones Informativas Públicas de libre acceso sin autenticación */}
           <Route path="/" element={<Inicio />} />
           <Route path="/nosotros" element={<Nosotros />} />
           <Route path="/contacto" element={<Contacto />} />
@@ -39,7 +39,7 @@ function App() {
           <Route path="/galeria" element={<Galeria />} />
           <Route path="/productos" element={<Productos />} />
 
-          {/* Rutas de autenticación y recuperación (RF-02, RF-03) */}
+          {/* Rutas de autenticación y recuperación */}
           <Route element={<PublicOnlyRoute />}>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -47,7 +47,7 @@ function App() {
             <Route path="/restablecer-password" element={<RestablecerPassword />} />
           </Route>
 
-          {/* Rutas protegidas genéricas (RF-05, RF-07, RF-09) */}
+          {/* Rutas protegidas genéricas */}
           <Route element={<ProtectedRoute />}>
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/perfil" element={<Perfil />} />
@@ -58,7 +58,7 @@ function App() {
             <Route path="/admin" element={<AdminPanel />} />
           </Route>
 
-          {/* RF-04: Rutas restringidas por Rol para Artesanos / Administradores (RF-06, RF-08) */}
+          {/* Rutas restringidas por Rol para Artesanos / Administradores */}
           <Route element={<RoleRoute allowedRoles={["artesano", "admin"]} />}>
             <Route path="/panel" element={<Navigate to="/agregar-productos" replace />} />
             <Route path="/agregar-productos" element={<Panel />} />

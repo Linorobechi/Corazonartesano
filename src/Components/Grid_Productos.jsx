@@ -208,7 +208,7 @@ export default function Grid_Productos() {
           <div className="flex items-center justify-between pt-2 border-t border-gray-100">
             <span className="font-bold text-base text-[#8b5e3c]">{product.precio}</span>
 
-            {/* RF-09: Add to Shopping Cart */}
+            {/* Add to Shopping Cart */}
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.9 }}
@@ -240,7 +240,7 @@ export default function Grid_Productos() {
         <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-8">{content}</div>
       </div>
 
-      {/* PRODUCT DETAIL & REVIEWS MODAL (RF-11) */}
+      {/* PRODUCT DETAIL & REVIEWS MODAL */}
       <AnimatePresence>
         {selectedProduct && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -297,7 +297,7 @@ export default function Grid_Productos() {
                 </div>
               </div>
 
-              {/* Product Reviews Widget (RF-11) */}
+              {/* Product Reviews Widget */}
               <ProductReviews
                 productId={selectedProduct.id}
                 productName={selectedProduct.nombre}

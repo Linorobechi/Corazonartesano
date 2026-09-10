@@ -12,7 +12,7 @@ const emptyForm = {
   identificacion: "",
   password: "",
   confirmPassword: "",
-  rol: "comprador", // default role (RF-02)
+  rol: "comprador",
 };
 
 const API_URL = import.meta.env.VITE_API_URL || "";
@@ -123,11 +123,11 @@ export default function Register() {
               <div>
                 <h2 className="text-2xl font-bold text-[#8b5e3c]">Crear Cuenta</h2>
                 <p className="text-xs text-gray-500 mt-1">
-                  Regístrate para comprar piezas artesanales o vender tus creaciones (RF-02).
+                  Regístrate para comprar piezas artesanales o vender tus creaciones.
                 </p>
               </div>
 
-              {/* Selector de Rol (RF-02) */}
+              {/* Selector de Rol */}
               <div className="space-y-1">
                 <label className="block text-xs font-semibold text-gray-700">
                   Selecciona tu Rol en la Plataforma:
@@ -184,7 +184,7 @@ export default function Register() {
                   />
                 </div>
 
-                {/* Tipo de Documento + Número (RF-02) */}
+                {/* Tipo de Documento + Número */}
                 <div className="grid grid-cols-3 gap-2">
                   <select
                     name="tipo_documento"

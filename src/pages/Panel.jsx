@@ -21,7 +21,7 @@ export default function Panel() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  // Edit Mode state (RF-06)
+  // Edit Mode state
   const [editingProduct, setEditingProduct] = useState(null);
   const [editForm, setEditForm] = useState(emptyForm);
   const [editImageFile, setEditImageFile] = useState(null);
@@ -87,7 +87,7 @@ export default function Panel() {
     });
   };
 
-  // RF-06: CREATE PRODUCT
+  // CREATE PRODUCT
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -132,7 +132,7 @@ export default function Panel() {
     }
   };
 
-  // RF-06: DELETE PRODUCT
+  // DELETE PRODUCT
   const handleDeleteProduct = async (productId, productName) => {
     if (!window.confirm(`¿Estás seguro de eliminar el producto "${productName}"?`)) {
       return;
@@ -159,7 +159,7 @@ export default function Panel() {
     }
   };
 
-  // RF-06: UPDATE PRODUCT
+  // UPDATE PRODUCT
   const handleStartEdit = (prod) => {
     setEditingProduct(prod);
     setEditForm({
@@ -215,7 +215,7 @@ export default function Panel() {
           <div className="bg-white rounded-3xl shadow-sm p-8 border border-[#eae0d5] flex justify-between items-center flex-wrap gap-4">
             <div>
               <div className="inline-flex items-center gap-2 bg-[#f1ece7] text-[#8b5e3c] px-3.5 py-1 rounded-full text-xs font-semibold">
-                <FaStore /> Panel de Gestión Artesanal (RF-06)
+                <FaStore /> Panel de Gestión Artesanal
               </div>
               <h2 className="text-3xl font-bold text-[#8b5e3c] mt-2">
                 Gestión de Productos Artesanales
@@ -262,7 +262,7 @@ export default function Panel() {
             </p>
           )}
 
-          {/* EDIT PRODUCT MODAL (RF-06) */}
+          {/* EDIT PRODUCT MODAL */}
           {editingProduct && (
             <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
               <div className="bg-white rounded-3xl shadow-2xl p-6 max-w-lg w-full space-y-4 border border-[#eae0d5]">
