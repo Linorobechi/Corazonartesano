@@ -1562,18 +1562,30 @@ app.get("/api/orders", authMiddleware, async (req, res) => {
   }
 });
 
-// RF-08: MOODLE COURSES FOR ARTISANS
-app.get("/api/moodle/courses", async (_req, res) => {
+// RF-08: MOODLE COURSES FOR ARTISANS (/api/cursos)
+const getMoodleCoursesHandler = async (_req, res) => {
   try {
-    if (process.env.MOODLE_URL && process.env.MOODLE_TOKEN) {
-      const response = await axios.get(`${process.env.MOODLE_URL}/webservice/rest/server.php`, {
+    const moodleUrl = process.env.MOODLE_URL;
+    const moodleToken = process.env.MOODLE_TOKEN;
+
+    if (moodleUrl && moodleToken) {
+      const endpointUrl = moodleUrl.endsWith("/webservice/rest/server.php")
+        ? moodleUrl
+        : `${moodleUrl.replace(/\/$/, "")}/webservice/rest/server.php`;
+
+      const response = await axios.get(endpointUrl, {
         params: {
-          wstoken: process.env.MOODLE_TOKEN,
+          wstoken: moodleToken,
           wsfunction: "core_course_get_courses",
           moodlewsrestformat: "json",
         },
       });
-      return res.json(response.data);
+
+      if (Array.isArray(response.data)) {
+        return res.json(response.data);
+      } else if (response.data && response.data.exception) {
+        console.warn("Moodle API response notice:", response.data.message);
+      }
     }
 
     // Integrated training course catalog for artisans
@@ -1625,10 +1637,14 @@ app.get("/api/moodle/courses", async (_req, res) => {
     ];
 
     return res.json(sampleCourses);
-  } catch (_error) {
+  } catch (error) {
+    console.error("Error fetching Moodle courses:", error.message);
     return res.status(500).json({ message: "Error al conectar con Moodle" });
   }
-});
+};
+
+app.get("/api/cursos", getMoodleCoursesHandler);
+app.get("/api/moodle/courses", getMoodleCoursesHandler);
 
 app.post("/api/moodle/enroll", authMiddleware, requireRole(["artesano", "admin"]), async (req, res) => {
   try {

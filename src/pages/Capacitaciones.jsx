@@ -11,6 +11,11 @@ import {
   FaUserGraduate,
 } from "react-icons/fa";
 
+const stripHtml = (html) => {
+  if (!html) return "";
+  return html.replace(/<[^>]*>?/gm, "").trim();
+};
+
 export default function Capacitaciones() {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,11 +27,17 @@ export default function Capacitaciones() {
 
   useEffect(() => {
     let ignore = false;
-    fetch("/api/moodle/courses")
+    fetch("/api/cursos")
       .then((res) => res.json())
       .then((data) => {
         if (!ignore) {
-          setCourses(Array.isArray(data) ? data : []);
+          const rawCourses = Array.isArray(data) ? data : [];
+          // Filter out site frontpage course (usually id: 1 or format: 'site') if other courses exist
+          const filtered = rawCourses.filter(
+            (c) => c.format !== "site" && c.id !== 1
+          );
+          const finalCourses = filtered.length > 0 ? filtered : rawCourses;
+          setCourses(finalCourses);
         }
       })
       .catch(() => {
@@ -151,7 +162,9 @@ export default function Capacitaciones() {
                       </div>
 
                       <h3 className="text-lg font-bold text-gray-800">{course.fullname}</h3>
-                      <p className="text-xs text-gray-600 leading-relaxed">{course.summary}</p>
+                      <p className="text-xs text-gray-600 leading-relaxed font-normal">
+                        {stripHtml(course.summary) || "Curso de formación artesanal y desarrollo técnico en Moodle."}
+                      </p>
 
                       <div className="flex items-center gap-4 text-xs text-gray-500 pt-2 border-t border-gray-100">
                         <span className="flex items-center gap-1">
