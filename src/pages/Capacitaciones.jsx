@@ -115,7 +115,7 @@ export default function Capacitaciones() {
                 rel="noopener noreferrer"
                 className="bg-[#8b5e3c] text-white px-6 py-3.5 rounded-2xl font-semibold text-sm hover:bg-[#754d31] transition shadow-md flex items-center gap-2 text-center"
               >
-                Acceder a Moodle Cloud
+                Acceder a Moodle
                 <FaExternalLinkAlt className="text-xs" />
               </a>
               <span className="text-[11px] text-gray-400">Campus Virtual Oficial</span>
@@ -179,7 +179,7 @@ export default function Capacitaciones() {
                     <div className="pt-2 flex gap-3">
                       {course.enrolled ? (
                         <a
-                          href="https://corazonartesano.moodlecloud.com/login/index.php"
+                          href="https://corazonartesano.gnomio.com/"
                           target="_blank"
                           rel="noopener noreferrer"
                           className="w-full bg-green-700 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-green-800 transition text-center flex items-center justify-center gap-1.5 shadow-sm"
