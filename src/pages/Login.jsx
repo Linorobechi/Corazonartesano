@@ -171,7 +171,7 @@ export default function Login() {
 
               <p className="text-xs text-center text-gray-500 pt-2 border-t">
                 ¿No tienes cuenta aún?{" "}
-                <Link to="/Register.jsx" className="text-[#8b5e3c] font-bold hover:underline">
+                <Link to="/register" className="text-[#8b5e3c] font-bold hover:underline">
                   Regístrate aquí
                 </Link>
               </p>

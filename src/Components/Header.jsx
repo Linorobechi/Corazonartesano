@@ -200,8 +200,8 @@ function Header() {
               {isArtesano && (
                 <>
                   <NavLink to="/agregar-productos" className={linkClass}>
-                    <span className="flex items-center gap-1">
-                      <FaStore className="text-xs" /> Panel Artesano
+                    <span className="flex items-center gap-1 font-semibold text-[#8b5e3c]">
+                      <FaStore className="text-xs" /> Agregar Productos
                     </span>
                   </NavLink>
                   <NavLink to="/capacitaciones" className={linkClass}>
@@ -350,7 +350,7 @@ function Header() {
                       onClick={() => setOpen(false)}
                       className="text-sm font-semibold text-[#8b5e3c] flex items-center gap-2"
                     >
-                      <FaStore /> Panel Artesano
+                      <FaStore /> Agregar Productos
                     </NavLink>
                     <NavLink
                       to="/capacitaciones"

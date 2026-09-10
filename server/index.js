@@ -59,12 +59,31 @@ let memoryDb = {
   products: [],
   orders: [],
   order_items: [],
-  reviews: [],
+  reviews: [
+    {
+      id: 1,
+      product_id: 1,
+      user_id: 2,
+      user_name: "Carlos Comprador",
+      rating: 5,
+      comentario: "Excelente Sombrero Vueltiao. La flexibilidad de la caña flecha y la finura de las trenzas son impecables.",
+      created_at: new Date(),
+    },
+    {
+      id: 2,
+      product_id: 3,
+      user_id: 2,
+      user_name: "Andrea Ramírez",
+      rating: 5,
+      comentario: "La Mochila Wayuu llegó súper rápido y los colores tradicionales son hermosos. ¡Excelente calidad!",
+      created_at: new Date(),
+    },
+  ],
   password_resets: [],
   nextUserId: 1,
   nextProductId: 1,
   nextOrderId: 1,
-  nextReviewId: 1,
+  nextReviewId: 3,
 };
 
 let connectionPool;
@@ -686,6 +705,126 @@ app.delete("/api/products/:id", authMiddleware, requireRole(["artesano", "admin"
     return res.json({ message: "Producto eliminado correctamente" });
   } catch (_error) {
     return res.status(500).json({ message: "Error al eliminar producto" });
+  }
+});
+
+// REVIEWS & RATINGS ENDPOINTS
+
+// GET REVIEWS FOR A PRODUCT
+app.get("/api/products/:productId/reviews", async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const prodIdNum = Number(productId);
+
+    if (isUsingMemoryDb) {
+      const reviews = memoryDb.reviews
+        .filter((r) => r.product_id === prodIdNum)
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      return res.json({ reviews });
+    }
+
+    const [rows] = await pool.query(
+      "SELECT id, product_id, user_id, user_name, rating, comentario, created_at FROM reviews WHERE product_id = ? ORDER BY id DESC",
+      [productId]
+    );
+
+    return res.json({ reviews: rows });
+  } catch (error) {
+    console.error("Error al consultar reseñas:", error);
+    return res.status(500).json({ message: "Error al consultar las reseñas del producto" });
+  }
+});
+
+// POST REVIEW FOR A PRODUCT (Authenticated users)
+app.post("/api/products/:productId/reviews", authMiddleware, async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const { rating, comentario } = req.body;
+    const prodIdNum = Number(productId);
+
+    if (!rating || !comentario || !comentario.trim()) {
+      return res.status(400).json({ message: "La calificación y el comentario son obligatorios" });
+    }
+
+    const numericRating = Math.min(5, Math.max(1, Number(rating) || 5));
+    const userName = req.user.nombre || "Comprador";
+    const userId = req.user.id;
+
+    if (isUsingMemoryDb) {
+      const newRev = {
+        id: memoryDb.nextReviewId++,
+        product_id: prodIdNum,
+        user_id: userId,
+        user_name: userName,
+        rating: numericRating,
+        comentario: comentario.trim(),
+        created_at: new Date(),
+      };
+      memoryDb.reviews.unshift(newRev);
+
+      const prodReviews = memoryDb.reviews.filter((r) => r.product_id === prodIdNum);
+      const avgRating = Number(
+        (prodReviews.reduce((sum, r) => sum + Number(r.rating), 0) / prodReviews.length).toFixed(1)
+      );
+
+      const prod = memoryDb.products.find((p) => p.id === prodIdNum);
+      if (prod) {
+        prod.rating = avgRating;
+      }
+
+      return res.status(201).json({
+        message: "Reseña y calificación publicadas con éxito",
+        review: newRev,
+        averageRating: avgRating,
+      });
+    }
+
+    const [result] = await pool.query(
+      "INSERT INTO reviews (product_id, user_id, user_name, rating, comentario) VALUES (?, ?, ?, ?, ?)",
+      [prodIdNum, userId, userName, numericRating, comentario.trim()]
+    );
+
+    const [avgRows] = await pool.query(
+      "SELECT AVG(rating) as avgRating FROM reviews WHERE product_id = ?",
+      [prodIdNum]
+    );
+    const avgRating = Number(Number(avgRows[0]?.avgRating || numericRating).toFixed(1));
+
+    await pool.query("UPDATE products SET rating = ? WHERE id = ?", [avgRating, prodIdNum]);
+
+    return res.status(201).json({
+      message: "Reseña y calificación publicadas con éxito",
+      review: {
+        id: result.insertId,
+        product_id: prodIdNum,
+        user_id: userId,
+        user_name: userName,
+        rating: numericRating,
+        comentario: comentario.trim(),
+        created_at: new Date(),
+      },
+      averageRating: avgRating,
+    });
+  } catch (error) {
+    console.error("Error al guardar reseña:", error);
+    return res.status(500).json({ message: "No se pudo guardar la reseña" });
+  }
+});
+
+// GET RECENT REVIEWS
+app.get("/api/reviews/recent", async (_req, res) => {
+  try {
+    if (isUsingMemoryDb) {
+      const recent = memoryDb.reviews.slice(0, 6);
+      return res.json({ reviews: recent });
+    }
+
+    const [rows] = await pool.query(
+      "SELECT r.id, r.product_id, r.user_name, r.rating, r.comentario, r.created_at, p.nombre as product_nombre FROM reviews r LEFT JOIN products p ON p.id = r.product_id ORDER BY r.id DESC LIMIT 6"
+    );
+    return res.json({ reviews: rows });
+  } catch (_error) {
+    return res.status(500).json({ message: "Error al consultar las reseñas recientes" });
   }
 });
 

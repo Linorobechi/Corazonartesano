@@ -63,17 +63,6 @@ export default function Productos() {
   return (
     <>
       <section className="bg-[#e9dfd4] py-16 px-6 text-center relative">
-        {isArtesano && (
-          <div className="max-w-6xl mx-auto mb-6 flex justify-start">
-            <Link
-              to="/agregar-productos"
-              className="inline-flex items-center gap-2 rounded-full bg-[#8b5e3c] px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-[#754d31] transition hover:scale-105"
-            >
-              <FaPlus /> Agregar productos
-            </Link>
-          </div>
-        )}
-        
         {/* HEADER */}
         <motion.div
           variants={fadeUp}
