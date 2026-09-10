@@ -1,7 +1,7 @@
-const API_URL = import.meta.env.VITE_API_URL || "https://corazonartesano.onrender.com";
+const API_URL = import.meta.env.VITE_API_URL || "";
 
 const parseResponse = async (response) => {
-  const data = await response.json();
+  const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
     throw new Error(data.message || "Error en la autenticación");
@@ -10,8 +10,29 @@ const parseResponse = async (response) => {
   return data;
 };
 
+const safeFetch = async (endpoint, options = {}) => {
+  let url = API_URL ? `${API_URL}${endpoint}` : endpoint;
+  let response;
+  try {
+    response = await fetch(url, options);
+    if (!response.ok && API_URL && url !== endpoint) {
+      const localResponse = await fetch(endpoint, options);
+      if (localResponse.ok) {
+        response = localResponse;
+      }
+    }
+  } catch (err) {
+    if (url !== endpoint) {
+      response = await fetch(endpoint, options);
+    } else {
+      throw err;
+    }
+  }
+  return response;
+};
+
 export const registerUser = async (payload) => {
-  const response = await fetch(`${API_URL}/api/register`, {
+  const response = await safeFetch("/api/register", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -23,7 +44,7 @@ export const registerUser = async (payload) => {
 };
 
 export const loginUser = async (payload) => {
-  const response = await fetch(`${API_URL}/api/login`, {
+  const response = await safeFetch("/api/login", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -35,7 +56,7 @@ export const loginUser = async (payload) => {
 };
 
 export const forgotPassword = async (email) => {
-  const response = await fetch(`${API_URL}/api/forgot-password`, {
+  const response = await safeFetch("/api/forgot-password", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -47,7 +68,7 @@ export const forgotPassword = async (email) => {
 };
 
 export const resetPassword = async (token, password) => {
-  const response = await fetch(`${API_URL}/api/reset-password`, {
+  const response = await safeFetch("/api/reset-password", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -60,42 +81,24 @@ export const resetPassword = async (token, password) => {
 
 export const getUserProfile = async () => {
   const token = localStorage.getItem("auth_token");
-  let response;
-  try {
-    response = await fetch(`${API_URL}/api/user/profile`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-  } catch {
-    response = await fetch("/api/user/profile", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-  }
+  const response = await safeFetch("/api/user/profile", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
   return parseResponse(response);
 };
 
 export const updateUserProfile = async (formData) => {
   const token = localStorage.getItem("auth_token");
-  let response;
-  try {
-    response = await fetch(`${API_URL}/api/user/profile`, {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
-    });
-  } catch {
-    response = await fetch("/api/user/profile", {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
-    });
-  }
+  const response = await safeFetch("/api/user/profile", {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
   return parseResponse(response);
 };
