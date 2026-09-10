@@ -22,6 +22,7 @@ export default function Register() {
   const [form, setForm] = useState(emptyForm);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [aceptoTerminos, setAceptoTerminos] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
@@ -45,6 +46,11 @@ export default function Register() {
 
     if (form.password !== form.confirmPassword) {
       setError("Las contraseñas no coinciden.");
+      return;
+    }
+
+    if (!aceptoTerminos) {
+      setError("Debes aceptar los términos y condiciones para registrarte.");
       return;
     }
 
@@ -95,6 +101,7 @@ export default function Register() {
 
       setSuccess("Cuenta creada correctamente. Redirigiendo...");
       setForm(emptyForm);
+      setAceptoTerminos(false);
 
       setTimeout(() => {
         if (data.user.rol === "artesano") {
@@ -249,6 +256,23 @@ export default function Register() {
                   >
                     {showConfirmPassword ? <FaEyeSlash className="text-sm" /> : <FaEye className="text-sm" />}
                   </button>
+                </div>
+
+                <div className="flex items-center gap-2 py-1">
+                  <input
+                    type="checkbox"
+                    id="aceptoTerminos"
+                    checked={aceptoTerminos}
+                    onChange={(e) => setAceptoTerminos(e.target.checked)}
+                    required
+                    className="w-4 h-4 rounded border-gray-300 text-[#8b5e3c] focus:ring-[#8b5e3c] cursor-pointer accent-[#8b5e3c]"
+                  />
+                  <label htmlFor="aceptoTerminos" className="text-xs text-gray-700 cursor-pointer select-none">
+                    Acepto los{" "}
+                    <Link to="/requisitos" className="text-[#8b5e3c] font-bold hover:underline" target="_blank">
+                      términos y condiciones
+                    </Link>
+                  </label>
                 </div>
 
                 <button
