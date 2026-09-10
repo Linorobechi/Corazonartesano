@@ -1,6 +1,29 @@
 import { useEffect, useState, useCallback } from "react";
 import Footer from "../Components/Footer";
-import { FaPlus, FaEdit, FaTrash, FaStore } from "react-icons/fa";
+import { FaPlus, FaEdit, FaTrash, FaStore, FaBoxOpen, FaLayerGroup, FaUserTag, FaCheckCircle } from "react-icons/fa";
+
+const API_URL = import.meta.env.VITE_API_URL || "";
+
+const safeFetch = async (endpoint, options = {}) => {
+  let url = API_URL ? `${API_URL}${endpoint}` : endpoint;
+  let response;
+  try {
+    response = await fetch(url, options);
+    if (!response.ok && API_URL && url !== endpoint) {
+      const localResponse = await fetch(endpoint, options);
+      if (localResponse.ok) {
+        response = localResponse;
+      }
+    }
+  } catch (err) {
+    if (url !== endpoint) {
+      response = await fetch(endpoint, options);
+    } else {
+      throw err;
+    }
+  }
+  return response;
+};
 
 const emptyForm = {
   nombre: "",
@@ -12,6 +35,7 @@ export default function Panel() {
   const storedUser = localStorage.getItem("auth_user");
   const user = storedUser ? JSON.parse(storedUser) : null;
 
+  const [filterTab, setFilterTab] = useState("todos"); // 'todos' | 'mis_productos'
   const [form, setForm] = useState(emptyForm);
   const [imagePreview, setImagePreview] = useState("");
   const [imageFile, setImageFile] = useState(null);
@@ -25,43 +49,29 @@ export default function Panel() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [editForm, setEditForm] = useState(emptyForm);
   const [editImageFile, setEditImageFile] = useState(null);
+  const [editImagePreview, setEditImagePreview] = useState("");
 
   const refreshProducts = useCallback(async () => {
     setLoadingProducts(true);
+    setError("");
     try {
-      const response = await fetch("/api/products");
+      const response = await safeFetch("/api/products");
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.message || "No se pudieron cargar los productos");
       }
       setProducts(data.products || []);
     } catch (loadError) {
-      setError(loadError.message);
+      console.error("Error al cargar productos:", loadError);
+      setError("No se pudieron cargar los productos del catálogo.");
     } finally {
       setLoadingProducts(false);
     }
   }, []);
 
   useEffect(() => {
-    let ignore = false;
-    fetch("/api/products")
-      .then((res) => res.json())
-      .then((data) => {
-        if (!ignore) {
-          setProducts(data.products || []);
-        }
-      })
-      .catch((loadError) => {
-        if (!ignore) setError(loadError.message);
-      })
-      .finally(() => {
-        if (!ignore) setLoadingProducts(false);
-      });
-
-    return () => {
-      ignore = true;
-    };
-  }, []);
+    refreshProducts();
+  }, [refreshProducts]);
 
   const handleChange = (e) => {
     if (e.target.name === "image_file") {
@@ -87,11 +97,33 @@ export default function Panel() {
     });
   };
 
+  const handleEditImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setEditImagePreview("");
+      setEditImageFile(null);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      setEditImagePreview(result);
+      setEditImageFile(file);
+    };
+    reader.readAsDataURL(file);
+  };
+
   // CREATE PRODUCT
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setMessage("");
+
+    if (!form.nombre || !form.descripcion || !form.precio) {
+      setError("Por favor completa todos los campos del producto.");
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -106,7 +138,7 @@ export default function Panel() {
         payload.append("image_file", imageFile);
       }
 
-      const response = await fetch("/api/products", {
+      const response = await safeFetch("/api/products", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -120,11 +152,12 @@ export default function Panel() {
         throw new Error(data.message || "No se pudo crear el producto");
       }
 
-      setMessage("Producto agregado correctamente");
+      setMessage("¡Producto publicado correctamente en el catálogo!");
       setForm(emptyForm);
       setImagePreview("");
       setImageFile(null);
       await refreshProducts();
+      setTimeout(() => setMessage(""), 4000);
     } catch (saveError) {
       setError(saveError.message);
     } finally {
@@ -134,13 +167,16 @@ export default function Panel() {
 
   // DELETE PRODUCT
   const handleDeleteProduct = async (productId, productName) => {
-    if (!window.confirm(`¿Estás seguro de eliminar el producto "${productName}"?`)) {
+    if (!window.confirm(`¿Estás seguro de eliminar el producto "${productName}" del catálogo?`)) {
       return;
     }
 
+    setError("");
+    setMessage("");
+
     try {
       const token = localStorage.getItem("auth_token");
-      const response = await fetch(`/api/products/${productId}`, {
+      const response = await safeFetch(`/api/products/${productId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -154,6 +190,7 @@ export default function Panel() {
 
       setMessage(`Producto "${productName}" eliminado con éxito.`);
       await refreshProducts();
+      setTimeout(() => setMessage(""), 4000);
     } catch (delErr) {
       setError(delErr.message);
     }
@@ -162,10 +199,12 @@ export default function Panel() {
   // UPDATE PRODUCT
   const handleStartEdit = (prod) => {
     setEditingProduct(prod);
+    setEditImagePreview("");
+    setEditImageFile(null);
     setEditForm({
-      nombre: prod.nombre,
-      descripcion: prod.descripcion,
-      precio: prod.rawPrecio || prod.precio.toString().replace(/[^0-9]/g, ""),
+      nombre: prod.nombre || "",
+      descripcion: prod.descripcion || "",
+      precio: prod.rawPrecio ? String(prod.rawPrecio) : (prod.precio ? String(prod.precio).replace(/[^0-9]/g, "") : ""),
     });
   };
 
@@ -173,6 +212,7 @@ export default function Panel() {
     e.preventDefault();
     setError("");
     setMessage("");
+    setSaving(true);
 
     try {
       const token = localStorage.getItem("auth_token");
@@ -185,7 +225,7 @@ export default function Panel() {
         payload.append("image_file", editImageFile);
       }
 
-      const response = await fetch(`/api/products/${editingProduct.id}`, {
+      const response = await safeFetch(`/api/products/${editingProduct.id}`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -198,14 +238,31 @@ export default function Panel() {
         throw new Error(data.message || "No se pudo actualizar el producto");
       }
 
-      setMessage("Producto actualizado correctamente");
+      setMessage(`Producto "${editForm.nombre}" actualizado correctamente.`);
       setEditingProduct(null);
       setEditImageFile(null);
+      setEditImagePreview("");
       await refreshProducts();
+      setTimeout(() => setMessage(""), 4000);
     } catch (err) {
       setError(err.message);
+    } finally {
+      setSaving(false);
     }
   };
+
+  const isMyProduct = (prod) => {
+    if (!user) return false;
+    if (prod.author_user_id === user.id) return true;
+    if (user.nombre && prod.autor && prod.autor.toLowerCase().trim() === user.nombre.toLowerCase().trim()) return true;
+    return false;
+  };
+
+  const displayedProducts = filterTab === "mis_productos"
+    ? products.filter((p) => isMyProduct(p))
+    : products;
+
+  const myProductsCount = products.filter((p) => isMyProduct(p)).length;
 
   return (
     <>
@@ -218,61 +275,96 @@ export default function Panel() {
                 <FaStore /> Panel de Gestión Artesanal
               </div>
               <h2 className="text-3xl font-bold text-[#8b5e3c] mt-2">
-                Gestión de Productos Artesanales
+                Gestión & Publicación de Productos
               </h2>
               <p className="text-gray-600 text-xs mt-1">
-                Crea, consulta, actualiza y elimina tus publicaciones en el catálogo global.
+                Publica piezas artesanales únicas, edita precios, fotos y gestiona el catálogo global.
               </p>
             </div>
 
-            <div className="flex gap-4">
-              <span className="bg-[#faf7f2] px-4 py-2 rounded-2xl border border-[#ede3d8] text-xs">
-                Rol: <strong className="text-[#8b5e3c] capitalize">{user?.rol || "Artesano"}</strong>
+            <div className="flex items-center gap-3">
+              <span className="bg-[#faf7f2] px-4 py-2 rounded-2xl border border-[#ede3d8] text-xs font-semibold text-[#8b5e3c]">
+                Rol: <strong className="capitalize">{user?.rol || "Artesano"}</strong>
               </span>
             </div>
           </div>
 
-          {/* User Info Bar */}
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="rounded-2xl bg-white p-4 shadow-sm border border-[#eae0d5]">
-              <p className="text-xs text-gray-500">Nombre Artesano</p>
-              <p className="text-sm font-semibold text-gray-800">{user?.nombre || "-"}</p>
+          {/* User Info & Stats Bar */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-2xl bg-white p-4 shadow-sm border border-[#eae0d5] flex items-center gap-3">
+              <div className="p-3 bg-[#fbf7f3] text-[#8b5e3c] rounded-xl text-lg">
+                <FaUserTag />
+              </div>
+              <div>
+                <p className="text-[11px] text-gray-500 font-semibold uppercase">Artesano Creador</p>
+                <p className="text-sm font-bold text-gray-800">{user?.nombre || "Artesano"}</p>
+              </div>
             </div>
-            <div className="rounded-2xl bg-white p-4 shadow-sm border border-[#eae0d5]">
-              <p className="text-xs text-gray-500">Correo Registrado</p>
-              <p className="text-sm font-semibold text-gray-800">{user?.email || "-"}</p>
+
+            <div className="rounded-2xl bg-white p-4 shadow-sm border border-[#eae0d5] flex items-center gap-3">
+              <div className="p-3 bg-[#fbf7f3] text-[#8b5e3c] rounded-xl text-lg">
+                <FaLayerGroup />
+              </div>
+              <div>
+                <p className="text-[11px] text-gray-500 font-semibold uppercase">Catálogo Global</p>
+                <p className="text-sm font-bold text-gray-800">{products.length} Productos</p>
+              </div>
             </div>
-            <div className="rounded-2xl bg-white p-4 shadow-sm border border-[#eae0d5]">
-              <p className="text-xs text-gray-500">Documento de Identidad</p>
-              <p className="text-sm font-semibold text-gray-800">
-                {user?.tipo_documento || "CC"} {user?.identificacion || "-"}
-              </p>
+
+            <div className="rounded-2xl bg-white p-4 shadow-sm border border-[#eae0d5] flex items-center gap-3">
+              <div className="p-3 bg-[#fbf7f3] text-[#8b5e3c] rounded-xl text-lg">
+                <FaBoxOpen />
+              </div>
+              <div>
+                <p className="text-[11px] text-gray-500 font-semibold uppercase">Mis Publicaciones</p>
+                <p className="text-sm font-bold text-[#8b5e3c]">{myProductsCount} Productos</p>
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-white p-4 shadow-sm border border-[#eae0d5] flex items-center gap-3">
+              <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl text-lg">
+                <FaCheckCircle />
+              </div>
+              <div>
+                <p className="text-[11px] text-gray-500 font-semibold uppercase">Estado de Cuenta</p>
+                <p className="text-xs font-bold text-emerald-700">Verificado para Publicar</p>
+              </div>
             </div>
           </div>
 
-          {/* Notification Messages */}
+          {/* Notification Alerts */}
           {message && (
-            <p className="text-xs text-green-700 bg-green-50 p-3 rounded-2xl border border-green-200 font-semibold">
-              {message}
-            </p>
+            <div className="text-xs text-green-800 bg-green-50 p-4 rounded-2xl border border-green-200 font-semibold shadow-sm flex justify-between items-center">
+              <span>✅ {message}</span>
+              <button onClick={() => setMessage("")} className="font-bold">✕</button>
+            </div>
           )}
           {error && (
-            <p className="text-xs text-red-600 bg-red-50 p-3 rounded-2xl border border-red-200 font-semibold">
-              {error}
-            </p>
+            <div className="text-xs text-red-700 bg-red-50 p-4 rounded-2xl border border-red-200 font-semibold shadow-sm flex justify-between items-center">
+              <span>⚠️ {error}</span>
+              <button onClick={() => setError("")} className="font-bold">✕</button>
+            </div>
           )}
 
           {/* EDIT PRODUCT MODAL */}
           {editingProduct && (
-            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-              <div className="bg-white rounded-3xl shadow-2xl p-6 max-w-lg w-full space-y-4 border border-[#eae0d5]">
-                <h3 className="text-lg font-bold text-[#8b5e3c]">
-                  Editar Producto #{editingProduct.id}
-                </h3>
+            <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl shadow-2xl p-6 max-w-lg w-full space-y-4 border border-[#eae0d5] relative animate-in fade-in zoom-in duration-200">
+                <div className="flex justify-between items-center border-b pb-3">
+                  <h3 className="text-lg font-bold text-[#8b5e3c] flex items-center gap-2">
+                    <FaEdit /> Editar Producto #{editingProduct.id}
+                  </h3>
+                  <button
+                    onClick={() => setEditingProduct(null)}
+                    className="text-gray-400 hover:text-gray-600 font-bold text-sm"
+                  >
+                    ✕
+                  </button>
+                </div>
 
                 <form onSubmit={handleUpdateProduct} className="space-y-3">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Nombre</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Nombre del Producto</label>
                     <input
                       value={editForm.nombre}
                       onChange={(e) => setEditForm({ ...editForm, nombre: e.target.value })}
@@ -293,9 +385,10 @@ export default function Panel() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Precio (COP)</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Precio en COP ($)</label>
                     <input
                       type="number"
+                      min="1"
                       value={editForm.precio}
                       onChange={(e) => setEditForm({ ...editForm, precio: e.target.value })}
                       required
@@ -308,10 +401,21 @@ export default function Panel() {
                     <input
                       type="file"
                       accept="image/*"
-                      onChange={(e) => setEditImageFile(e.target.files?.[0] || null)}
+                      onChange={handleEditImageChange}
                       className="w-full rounded-xl bg-[#f1ece7] p-2 text-xs"
                     />
                   </div>
+
+                  {editImagePreview && (
+                    <div className="rounded-2xl border border-[#eaded3] bg-[#faf7f3] p-2">
+                      <p className="text-[10px] text-gray-500 mb-1 font-semibold">Nueva Imagen Seleccionada:</p>
+                      <img
+                        src={editImagePreview}
+                        alt="Previsualización"
+                        className="h-28 w-full rounded-xl object-cover"
+                      />
+                    </div>
+                  )}
 
                   <div className="flex justify-end gap-3 pt-3 border-t">
                     <button
@@ -323,9 +427,10 @@ export default function Panel() {
                     </button>
                     <button
                       type="submit"
-                      className="px-5 py-2 rounded-xl bg-[#8b5e3c] text-white text-xs font-semibold hover:bg-[#754d31]"
+                      disabled={saving}
+                      className="px-5 py-2 rounded-xl bg-[#8b5e3c] text-white text-xs font-bold hover:bg-[#754d31] transition shadow-md disabled:opacity-70"
                     >
-                      Guardar Cambios
+                      {saving ? "Guardando..." : "Guardar Cambios"}
                     </button>
                   </div>
                 </form>
@@ -342,7 +447,7 @@ export default function Panel() {
               </h3>
 
               <div className="rounded-2xl border border-dashed border-[#d9c7b8] bg-[#fbf8f5] p-3 text-xs text-gray-600">
-                El autor se asociará automáticamente a tu nombre de artesano (<strong>{user?.nombre}</strong>).
+                La pieza se registrará automáticamente a tu nombre de artesano (<strong>{user?.nombre || "Artesano"}</strong>).
               </div>
 
               <div>
@@ -363,7 +468,7 @@ export default function Panel() {
                   name="descripcion"
                   value={form.descripcion}
                   onChange={handleChange}
-                  placeholder="Detalla los materiales, origen y elaboración..."
+                  placeholder="Detalla los materiales, origen y técnica artesanal empleada..."
                   rows="3"
                   required
                   className="w-full p-3 rounded-xl bg-[#f1ece7] text-xs outline-none focus:ring-2 focus:ring-[#8b5e3c]"
@@ -371,7 +476,7 @@ export default function Panel() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Precio (COP)</label>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Precio (COP $)</label>
                 <input
                   name="precio"
                   type="number"
@@ -397,11 +502,11 @@ export default function Panel() {
 
               {imagePreview && (
                 <div className="rounded-2xl border border-[#eaded3] bg-[#faf7f3] p-3">
-                  <p className="text-[11px] text-gray-500 mb-1.5 font-semibold">Vista Previa</p>
+                  <p className="text-[11px] text-gray-500 mb-1.5 font-semibold">Vista Previa de la Fotografía</p>
                   <img
                     src={imagePreview}
                     alt="Vista previa"
-                    className="h-36 w-full rounded-xl object-cover"
+                    className="h-40 w-full rounded-xl object-cover shadow-sm"
                   />
                 </div>
               )}
@@ -409,7 +514,7 @@ export default function Panel() {
               <button
                 type="submit"
                 disabled={saving}
-                className="w-full bg-[#8b5e3c] text-white py-3 rounded-xl hover:bg-[#754d31] transition font-bold text-xs shadow-md disabled:opacity-70"
+                className="w-full bg-[#8b5e3c] text-white py-3.5 rounded-xl hover:bg-[#754d31] transition font-bold text-xs shadow-md disabled:opacity-70"
               >
                 {saving ? "Guardando en Catálogo..." : "Publicar Producto Artesanal"}
               </button>
@@ -417,41 +522,84 @@ export default function Panel() {
 
             {/* Existing Products List with CRUD controls */}
             <div className="bg-white p-6 rounded-3xl shadow-sm border border-[#eae0d5] space-y-4">
-              <div className="flex justify-between items-center border-b pb-3">
-                <h3 className="text-lg font-bold text-gray-800">Catálogo de Productos</h3>
-                <span className="text-xs text-gray-500">{products.length} productos</span>
+              <div className="flex justify-between items-center flex-wrap gap-2 border-b pb-3">
+                <h3 className="text-lg font-bold text-gray-800">Gestión de Catálogo</h3>
+
+                {/* Filter Tabs */}
+                <div className="flex gap-1.5 bg-[#f5f1ec] p-1 rounded-xl text-xs font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setFilterTab("todos")}
+                    className={`px-3 py-1.5 rounded-lg transition ${
+                      filterTab === "todos"
+                        ? "bg-[#8b5e3c] text-white shadow-sm"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                  >
+                    Todos ({products.length})
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFilterTab("mis_productos")}
+                    className={`px-3 py-1.5 rounded-lg transition ${
+                      filterTab === "mis_productos"
+                        ? "bg-[#8b5e3c] text-white shadow-sm"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                  >
+                    Mis Productos ({myProductsCount})
+                  </button>
+                </div>
               </div>
 
               {loadingProducts ? (
-                <p className="text-xs text-gray-500 py-8 text-center">Cargando catálogo...</p>
+                <div className="text-xs text-gray-500 py-12 text-center">
+                  Cargando catálogo artesanal...
+                </div>
+              ) : displayedProducts.length === 0 ? (
+                <div className="text-xs text-gray-500 py-12 text-center bg-[#faf7f3] rounded-2xl border border-dashed border-[#e2d5c7]">
+                  {filterTab === "mis_productos"
+                    ? "Aún no has publicado productos a tu nombre. ¡Usa el formulario para agregar tu primera pieza!"
+                    : "No hay productos en el catálogo actualmente."}
+                </div>
               ) : (
-                <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
-                  {products.map((prod) => (
+                <div className="space-y-3 max-h-[540px] overflow-y-auto pr-1">
+                  {displayedProducts.map((prod) => (
                     <div
                       key={prod.id}
-                      className="rounded-2xl border border-[#eaded3] bg-[#faf7f3] p-4 flex justify-between items-center gap-4"
+                      className="rounded-2xl border border-[#eaded3] bg-[#faf7f3] p-4 flex justify-between items-center gap-4 hover:border-[#d7c4b3] transition"
                     >
-                      <div>
-                        <p className="font-bold text-sm text-gray-800">{prod.nombre}</p>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-sm text-gray-800">{prod.nombre}</p>
+                          {isMyProduct(prod) && (
+                            <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">
+                              Mi Pieza
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-gray-500">Por {prod.autor}</p>
-                        <p className="text-xs font-bold text-[#8b5e3c] mt-1">{prod.precio}</p>
+                        <p className="text-xs font-bold text-[#8b5e3c]">{prod.precio}</p>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         <button
+                          type="button"
                           onClick={() => handleStartEdit(prod)}
-                          className="p-2.5 rounded-xl bg-amber-100 text-amber-800 hover:bg-amber-200 transition text-xs"
+                          className="p-2.5 rounded-xl bg-amber-100 text-amber-800 hover:bg-amber-200 transition text-xs font-bold flex items-center gap-1"
                           title="Editar producto"
                         >
-                          <FaEdit />
+                          <FaEdit /> <span className="hidden sm:inline">Editar</span>
                         </button>
 
                         <button
+                          type="button"
                           onClick={() => handleDeleteProduct(prod.id, prod.nombre)}
-                          className="p-2.5 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 transition text-xs"
+                          className="p-2.5 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 transition text-xs font-bold flex items-center gap-1"
                           title="Eliminar producto"
                         >
-                          <FaTrash />
+                          <FaTrash /> <span className="hidden sm:inline">Eliminar</span>
                         </button>
                       </div>
                     </div>

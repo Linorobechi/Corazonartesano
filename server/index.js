@@ -563,8 +563,8 @@ app.get("/api/products", async (_req, res) => {
   }
 });
 
-// CREATE PRODUCT (Artesano)
-app.post("/api/products", authMiddleware, requireRole(["artesano"]), upload.single("image_file"), async (req, res) => {
+// CREATE PRODUCT (Artesano / Admin)
+app.post("/api/products", authMiddleware, requireRole(["artesano", "admin"]), upload.single("image_file"), async (req, res) => {
   try {
     const { nombre, descripcion, precio } = req.body;
     const imageFile = req.file;
@@ -598,7 +598,7 @@ app.post("/api/products", authMiddleware, requireRole(["artesano"]), upload.sing
       memoryDb.products.unshift(newProd);
       return res.status(201).json({
         message: "Producto creado correctamente",
-        product: { ...newProd, precio: formatCurrency(parsedPrice) },
+        product: { ...newProd, precio: formatCurrency(parsedPrice), rawPrecio: parsedPrice },
       });
     }
 
@@ -617,18 +617,19 @@ app.post("/api/products", authMiddleware, requireRole(["artesano"]), upload.sing
         author_user_id,
         descripcion: descripcion.trim(),
         precio: formatCurrency(parsedPrice),
+        rawPrecio: parsedPrice,
         rating: 5.0,
         image_data,
       },
     });
   } catch (error) {
-    console.error(error);
+    console.error("Error al crear producto:", error);
     return res.status(500).json({ message: "No se pudo crear el producto" });
   }
 });
 
-// UPDATE PRODUCT (Artesano)
-app.put("/api/products/:id", authMiddleware, requireRole(["artesano"]), upload.single("image_file"), async (req, res) => {
+// UPDATE PRODUCT (Artesano / Admin)
+app.put("/api/products/:id", authMiddleware, requireRole(["artesano", "admin"]), upload.single("image_file"), async (req, res) => {
   try {
     const { id } = req.params;
     const { nombre, descripcion, precio } = req.body;
@@ -639,7 +640,8 @@ app.put("/api/products/:id", authMiddleware, requireRole(["artesano"]), upload.s
       if (prodIndex === -1) return res.status(404).json({ message: "Producto no encontrado" });
 
       const prod = memoryDb.products[prodIndex];
-      if (req.user.rol !== "admin" && prod.author_user_id && prod.author_user_id !== req.user.id) {
+      const canManage = req.user.rol === "admin" || req.user.rol === "artesano" || !prod.author_user_id || prod.author_user_id === req.user.id;
+      if (!canManage) {
         return res.status(403).json({ message: "No tienes permiso para modificar este producto" });
       }
 
@@ -655,7 +657,8 @@ app.put("/api/products/:id", authMiddleware, requireRole(["artesano"]), upload.s
     if (rows.length === 0) return res.status(404).json({ message: "Producto no encontrado" });
     const prod = rows[0];
 
-    if (req.user.rol !== "admin" && prod.author_user_id && prod.author_user_id !== req.user.id) {
+    const canManage = req.user.rol === "admin" || req.user.rol === "artesano" || !prod.author_user_id || prod.author_user_id === req.user.id;
+    if (!canManage) {
       return res.status(403).json({ message: "No tienes permiso para modificar este producto" });
     }
 
@@ -670,12 +673,13 @@ app.put("/api/products/:id", authMiddleware, requireRole(["artesano"]), upload.s
     );
 
     return res.json({ message: "Producto actualizado correctamente" });
-  } catch (_error) {
+  } catch (error) {
+    console.error("Error al actualizar producto:", error);
     return res.status(500).json({ message: "Error al actualizar producto" });
   }
 });
 
-// RF-06: DELETE PRODUCT (Artesano / Admin)
+// DELETE PRODUCT (Artesano / Admin)
 app.delete("/api/products/:id", authMiddleware, requireRole(["artesano", "admin"]), async (req, res) => {
   try {
     const { id } = req.params;
@@ -685,7 +689,8 @@ app.delete("/api/products/:id", authMiddleware, requireRole(["artesano", "admin"
       if (prodIndex === -1) return res.status(404).json({ message: "Producto no encontrado" });
 
       const prod = memoryDb.products[prodIndex];
-      if (req.user.rol !== "admin" && prod.author_user_id && prod.author_user_id !== req.user.id) {
+      const canManage = req.user.rol === "admin" || req.user.rol === "artesano" || !prod.author_user_id || prod.author_user_id === req.user.id;
+      if (!canManage) {
         return res.status(403).json({ message: "No tienes permiso para eliminar este producto" });
       }
 
@@ -697,13 +702,15 @@ app.delete("/api/products/:id", authMiddleware, requireRole(["artesano", "admin"
     if (rows.length === 0) return res.status(404).json({ message: "Producto no encontrado" });
     const prod = rows[0];
 
-    if (req.user.rol !== "admin" && prod.author_user_id && prod.author_user_id !== req.user.id) {
+    const canManage = req.user.rol === "admin" || req.user.rol === "artesano" || !prod.author_user_id || prod.author_user_id === req.user.id;
+    if (!canManage) {
       return res.status(403).json({ message: "No tienes permiso para eliminar este producto" });
     }
 
     await pool.query("DELETE FROM products WHERE id = ?", [id]);
     return res.json({ message: "Producto eliminado correctamente" });
-  } catch (_error) {
+  } catch (error) {
+    console.error("Error al eliminar producto:", error);
     return res.status(500).json({ message: "Error al eliminar producto" });
   }
 });
