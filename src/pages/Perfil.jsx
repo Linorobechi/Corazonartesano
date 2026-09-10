@@ -259,16 +259,13 @@ export default function Perfil() {
             className="bg-white rounded-3xl shadow-xl overflow-hidden border border-[#eae0d5]"
           >
             {/* Banner de Fondo Artesanal */}
-            <div className="h-44 bg-gradient-to-r from-[#7a4b2c] via-[#8b5e3c] to-[#a47148] relative p-6 flex items-end">
+            <div className="h-44 bg-gradient-to-r from-[#7a4b2c] via-[#8b5e3c] to-[#a47148] relative p-6 flex items-start">
               <div className="absolute inset-0 opacity-15 bg-[radial-[#fff]_1px,transparent_1px] [background-size:16px_16px]"></div>
-              <div className="relative z-10 text-white flex justify-between items-end w-full">
+              <div className="relative z-10 text-white flex justify-between items-center w-full pt-1">
                 <div>
-                  <span className="text-xs font-semibold uppercase tracking-wider bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm border border-white/30">
+                  <span className="text-xs font-bold uppercase tracking-wider bg-white/20 px-3.5 py-1.5 rounded-full backdrop-blur-sm border border-white/30 shadow-sm">
                     {isArtesano ? "🎨 Artesano Creador" : "🛍️ Comprador Registrado"}
                   </span>
-                  <h1 className="text-2xl md:text-3xl font-extrabold mt-2 text-white drop-shadow-sm">
-                    {user?.nombre}
-                  </h1>
                 </div>
                 <div className="hidden sm:block text-right text-xs opacity-90">
                   <p className="font-medium">Corazón Artesano</p>

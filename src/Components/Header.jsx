@@ -106,7 +106,15 @@ function Header() {
   const isAdmin = user?.rol === "admin";
   const isArtesano = user?.rol === "artesano";
 
-  const visiblePublicLinks = isAdmin ? [] : publicLinks;
+  let visiblePublicLinks = publicLinks;
+  if (isAdmin) {
+    visiblePublicLinks = [];
+  } else if (isArtesano) {
+    visiblePublicLinks = [
+      { to: "/", label: "Inicio" },
+      { to: "/productos", label: "Productos" },
+    ];
+  }
 
   return (
     <header className="fixed top-0 left-0 w-full z-30 bg-white/90 backdrop-blur-md shadow-sm border-b border-[#f1ece7]">

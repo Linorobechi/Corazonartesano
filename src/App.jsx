@@ -42,7 +42,11 @@ function App() {
           {/* Rutas de autenticación y recuperación */}
           <Route element={<PublicOnlyRoute />}>
             <Route path="/login" element={<Login />} />
+            <Route path="/Login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/Register" element={<Register />} />
+            <Route path="/registro" element={<Register />} />
+            <Route path="/registrarse" element={<Register />} />
             <Route path="/recuperar-password" element={<RecuperarPassword />} />
             <Route path="/restablecer-password" element={<RestablecerPassword />} />
           </Route>
