@@ -45,6 +45,19 @@ export default function CartDrawer() {
 
   const handleCheckout = () => {
     setIsCartOpen(false);
+    const token = localStorage.getItem("auth_token");
+    if (!token) {
+      window.dispatchEvent(
+        new CustomEvent("app-notification", {
+          detail: {
+            type: "warning",
+            message: "Debes estar registrado e iniciar sesión en el sitio para realizar una compra.",
+          },
+        })
+      );
+      navigate("/login", { state: { from: "/checkout" } });
+      return;
+    }
     navigate("/checkout");
   };
 

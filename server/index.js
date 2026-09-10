@@ -544,8 +544,8 @@ app.get("/api/products", async (_req, res) => {
   }
 });
 
-// RF-06: CREATE PRODUCT (Artesano / Admin)
-app.post("/api/products", authMiddleware, requireRole(["artesano", "admin"]), upload.single("image_file"), async (req, res) => {
+// CREATE PRODUCT (Artesano)
+app.post("/api/products", authMiddleware, requireRole(["artesano"]), upload.single("image_file"), async (req, res) => {
   try {
     const { nombre, descripcion, precio } = req.body;
     const imageFile = req.file;
@@ -608,8 +608,8 @@ app.post("/api/products", authMiddleware, requireRole(["artesano", "admin"]), up
   }
 });
 
-// RF-06: UPDATE PRODUCT (Artesano / Admin)
-app.put("/api/products/:id", authMiddleware, requireRole(["artesano", "admin"]), upload.single("image_file"), async (req, res) => {
+// UPDATE PRODUCT (Artesano)
+app.put("/api/products/:id", authMiddleware, requireRole(["artesano"]), upload.single("image_file"), async (req, res) => {
   try {
     const { id } = req.params;
     const { nombre, descripcion, precio } = req.body;

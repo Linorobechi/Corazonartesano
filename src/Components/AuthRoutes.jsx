@@ -19,6 +19,16 @@ export function ProtectedRoute({ children }) {
   const { isAuthenticated } = getAuthState();
 
   if (!isAuthenticated) {
+    if (location.pathname === "/checkout") {
+      window.dispatchEvent(
+        new CustomEvent("app-notification", {
+          detail: {
+            type: "warning",
+            message: "Debes estar registrado e iniciar sesión para realizar una compra en Corazón Artesano.",
+          },
+        })
+      );
+    }
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 

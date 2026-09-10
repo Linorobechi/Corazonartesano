@@ -58,8 +58,8 @@ function App() {
             <Route path="/admin" element={<AdminPanel />} />
           </Route>
 
-          {/* Rutas restringidas por Rol para Artesanos / Administradores */}
-          <Route element={<RoleRoute allowedRoles={["artesano", "admin"]} />}>
+          {/* Rutas restringidas por Rol estrictamente para Artesanos (Agregar Productos) */}
+          <Route element={<RoleRoute allowedRoles={["artesano"]} />}>
             <Route path="/panel" element={<Navigate to="/agregar-productos" replace />} />
             <Route path="/agregar-productos" element={<Panel />} />
             <Route path="/capacitaciones" element={<Capacitaciones />} />
