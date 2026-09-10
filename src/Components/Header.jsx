@@ -106,9 +106,7 @@ function Header() {
   const isAdmin = user?.rol === "admin";
   const isArtesano = user?.rol === "artesano";
 
-  const visiblePublicLinks = isAdmin
-    ? [{ to: "/", label: "Inicio" }]
-    : publicLinks;
+  const visiblePublicLinks = isAdmin ? [] : publicLinks;
 
   return (
     <header className="fixed top-0 left-0 w-full z-30 bg-white/90 backdrop-blur-md shadow-sm border-b border-[#f1ece7]">
@@ -128,18 +126,20 @@ function Header() {
 
         {/* Mobile Menu Button */}
         <div className="flex items-center gap-3 md:hidden">
-          {/* Cart Icon trigger */}
-          <button
-            onClick={() => setIsCartOpen(true)}
-            className="relative p-2 text-[#7a4b2c] hover:bg-[#fbf7f3] rounded-full"
-          >
-            <FaShoppingBag className="text-xl" />
-            {totalItems > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                {totalItems}
-              </span>
-            )}
-          </button>
+          {/* Cart Icon trigger (Oculto para Administrador) */}
+          {!isAdmin && (
+            <button
+              onClick={() => setIsCartOpen(true)}
+              className="relative p-2 text-[#7a4b2c] hover:bg-[#fbf7f3] rounded-full"
+            >
+              <FaShoppingBag className="text-xl" />
+              {totalItems > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                  {totalItems}
+                </span>
+              )}
+            </button>
+          )}
 
           {isAuthenticated && (
             <NavLink
@@ -204,19 +204,21 @@ function Header() {
                 </>
               )}
 
-              {/* Shopping Cart Drawer Trigger */}
-              <button
-                onClick={() => setIsCartOpen(true)}
-                className="relative p-2 text-[#7a4b2c] hover:bg-[#fbf7f3] rounded-full transition"
-                title="Ver Carrito de Compras"
-              >
-                <FaShoppingBag className="text-lg" />
-                {totalItems > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center animate-pulse">
-                    {totalItems}
-                  </span>
-                )}
-              </button>
+              {/* Shopping Cart Drawer Trigger (Oculto para Administrador) */}
+              {!isAdmin && (
+                <button
+                  onClick={() => setIsCartOpen(true)}
+                  className="relative p-2 text-[#7a4b2c] hover:bg-[#fbf7f3] rounded-full transition"
+                  title="Ver Carrito de Compras"
+                >
+                  <FaShoppingBag className="text-lg" />
+                  {totalItems > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center animate-pulse">
+                      {totalItems}
+                    </span>
+                  )}
+                </button>
+              )}
 
               <div className="h-4 w-[1px] bg-gray-200" />
 
