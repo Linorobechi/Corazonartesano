@@ -66,7 +66,9 @@ export default function Login() {
       setForm(emptyForm);
 
       // Redirección según rol (RF-04)
-      if (data.user.rol === "artesano") {
+      if (data.user.rol === "admin") {
+        navigate("/admin");
+      } else if (data.user.rol === "artesano") {
         navigate("/agregar-productos");
       } else {
         navigate("/");
@@ -76,6 +78,13 @@ export default function Login() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fillAdminCredentials = () => {
+    setForm({
+      identifier: "admin@corazonartesano.com",
+      password: "admin123",
+    });
   };
 
   return (
@@ -112,6 +121,23 @@ export default function Login() {
                 <p className="text-xs text-gray-500 mt-1">
                   Ingresa tu correo o número de documento para acceder.
                 </p>
+              </div>
+
+              {/* Botón de acceso directo Administrador */}
+              <div className="bg-amber-50 border border-amber-200 p-3 rounded-2xl flex items-center justify-between text-xs">
+                <div>
+                  <p className="font-bold text-amber-900 flex items-center gap-1">
+                    👑 Acceso Administrador Preconfigurado
+                  </p>
+                  <p className="text-[10px] text-amber-700">admin@corazonartesano.com / admin123</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={fillAdminCredentials}
+                  className="bg-amber-600 text-white text-[11px] font-bold px-3 py-1.5 rounded-xl hover:bg-amber-700 transition"
+                >
+                  Usar Admin
+                </button>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">

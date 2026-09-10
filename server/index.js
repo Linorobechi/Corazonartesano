@@ -88,6 +88,12 @@ const buildUserResponse = (user) => ({
   tipo_documento: user.tipo_documento || "CC",
   rol: user.rol || "comprador",
   moodle_id: user.moodle_id || null,
+  foto: user.foto || null,
+  telefono: user.telefono || "",
+  biografia: user.biografia || "",
+  especialidad: user.especialidad || "",
+  ubicacion: user.ubicacion || "",
+  created_at: user.created_at || null,
 });
 
 const getTableColumns = async (tableName) => {
@@ -205,6 +211,11 @@ const ensureDatabase = async () => {
         password VARCHAR(255) NOT NULL,
         rol VARCHAR(30) DEFAULT 'comprador',
         moodle_id INT NULL,
+        foto VARCHAR(255) NULL,
+        telefono VARCHAR(30) NULL,
+        biografia TEXT NULL,
+        especialidad VARCHAR(120) NULL,
+        ubicacion VARCHAR(120) NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -218,6 +229,21 @@ const ensureDatabase = async () => {
     }
     if (!userColumns.has("moodle_id")) {
       await pool.query("ALTER TABLE users ADD COLUMN moodle_id INT NULL");
+    }
+    if (!userColumns.has("foto")) {
+      await pool.query("ALTER TABLE users ADD COLUMN foto VARCHAR(255) NULL");
+    }
+    if (!userColumns.has("telefono")) {
+      await pool.query("ALTER TABLE users ADD COLUMN telefono VARCHAR(30) NULL");
+    }
+    if (!userColumns.has("biografia")) {
+      await pool.query("ALTER TABLE users ADD COLUMN biografia TEXT NULL");
+    }
+    if (!userColumns.has("especialidad")) {
+      await pool.query("ALTER TABLE users ADD COLUMN especialidad VARCHAR(120) NULL");
+    }
+    if (!userColumns.has("ubicacion")) {
+      await pool.query("ALTER TABLE users ADD COLUMN ubicacion VARCHAR(120) NULL");
     }
 
     await pool.query(`
@@ -300,6 +326,32 @@ const ensureDatabase = async () => {
         );
       }
     }
+
+    // Seed default Admin user in MySQL
+    const ADMIN_EMAIL = "admin@corazonartesano.com";
+    const ADMIN_IDENT = "1000000000";
+    const [adminExisting] = await pool.query(
+      "SELECT id FROM users WHERE email = ? OR identificacion = ? LIMIT 1",
+      [ADMIN_EMAIL, ADMIN_IDENT]
+    );
+    if (adminExisting.length === 0) {
+      const hashedPassword = await bcrypt.hash("admin123", 10);
+      await pool.query(
+        `INSERT INTO users (nombre, email, identificacion, tipo_documento, password, rol, especialidad, ubicacion)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          "Administrador Principal",
+          ADMIN_EMAIL,
+          ADMIN_IDENT,
+          "CC",
+          hashedPassword,
+          "admin",
+          "Gestión de Plataforma",
+          "Sincelejo, Sucre",
+        ]
+      );
+      console.log(`[SEED] Cuenta de Administrador creada en MySQL: ${ADMIN_EMAIL}`);
+    }
   } catch (error) {
     console.warn("No se pudo conectar a MySQL local. Usando base de datos en memoria para desarrollo:", error.message);
     isUsingMemoryDb = true;
@@ -318,6 +370,64 @@ const ensureDatabase = async () => {
           image_data: null,
           rating: p.rating,
         });
+      });
+    }
+
+    // Populate memoryDb with default seed Admin user
+    const ADMIN_EMAIL = "admin@corazonartesano.com";
+    const ADMIN_IDENT = "1000000000";
+    const memAdmin = memoryDb.users.find((u) => u.email === ADMIN_EMAIL);
+    if (!memAdmin) {
+      const hashedPassword = await bcrypt.hash("admin123", 10);
+      memoryDb.users.push({
+        id: memoryDb.nextUserId++,
+        nombre: "Administrador Principal",
+        email: ADMIN_EMAIL,
+        identificacion: ADMIN_IDENT,
+        tipo_documento: "CC",
+        password: hashedPassword,
+        rol: "admin",
+        moodle_id: 1,
+        foto: null,
+        telefono: "+57 300 000 0000",
+        biografia: "Administrador general de la plataforma Corazón Artesano.",
+        especialidad: "Gestión de Plataforma",
+        ubicacion: "Sincelejo, Sucre",
+        created_at: new Date(),
+      });
+
+      // Sample artisan and buyer for initial memory DB testing
+      memoryDb.users.push({
+        id: memoryDb.nextUserId++,
+        nombre: "María Contreras",
+        email: "maria@artesana.com",
+        identificacion: "1065123456",
+        tipo_documento: "CC",
+        password: hashedPassword,
+        rol: "artesano",
+        moodle_id: 101,
+        foto: null,
+        telefono: "+57 301 234 5678",
+        biografia: "Maestra tejedora de sombreros vueltiaos tradicionales.",
+        especialidad: "Tejido en Caña Flecha",
+        ubicacion: "Sampués, Sucre",
+        created_at: new Date(),
+      });
+      memoryDb.users.push({
+        id: memoryDb.nextUserId++,
+        nombre: "Carlos Comprador",
+        email: "carlos@cliente.com",
+        identificacion: "1098765432",
+        tipo_documento: "CC",
+        password: hashedPassword,
+        rol: "comprador",
+        moodle_id: null,
+        foto: null,
+        telefono: "+57 312 987 6543",
+        biografia: "Amante de las artesanías y coleccionista.",
+        especialidad: "",
+        ubicacion: "Bogotá, Colombia",
+        created_at: new Date(),
       });
     }
   }
@@ -699,6 +809,277 @@ app.post("/api/login", async (req, res) => {
     });
   } catch (_error) {
     return res.status(500).json({ message: "Error en inicio de sesión" });
+  }
+});
+
+// GET USER PROFILE
+app.get("/api/user/profile", authMiddleware, async (req, res) => {
+  try {
+    let user = null;
+    if (isUsingMemoryDb) {
+      user = memoryDb.users.find((u) => u.id === req.user.id);
+    } else {
+      const [rows] = await pool.query("SELECT * FROM users WHERE id = ? LIMIT 1", [req.user.id]);
+      user = rows[0];
+    }
+
+    if (!user) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    return res.json({
+      user: buildUserResponse(user),
+    });
+  } catch (error) {
+    console.error("Error al obtener perfil:", error);
+    return res.status(500).json({ message: "Error al obtener perfil de usuario" });
+  }
+});
+
+// UPDATE USER PROFILE & AVATAR PHOTO
+app.put("/api/user/profile", authMiddleware, upload.single("foto"), async (req, res) => {
+  try {
+    const { nombre, tipo_documento, identificacion, telefono, biografia, especialidad, ubicacion, password, passwordActual } = req.body;
+    const fotoFile = req.file;
+
+    let user = null;
+    if (isUsingMemoryDb) {
+      user = memoryDb.users.find((u) => u.id === req.user.id);
+    } else {
+      const [rows] = await pool.query("SELECT * FROM users WHERE id = ? LIMIT 1", [req.user.id]);
+      user = rows[0];
+    }
+
+    if (!user) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    // Verify current password if new password requested
+    let updatedPassword = user.password;
+    if (password) {
+      if (!passwordActual) {
+        return res.status(400).json({ message: "Debes ingresar tu contraseña actual para cambiarla" });
+      }
+      const matches = await bcrypt.compare(passwordActual, user.password);
+      if (!matches) {
+        return res.status(400).json({ message: "La contraseña actual es incorrecta" });
+      }
+      if (password.length < 6) {
+        return res.status(400).json({ message: "La nueva contraseña debe tener al menos 6 caracteres" });
+      }
+      updatedPassword = await bcrypt.hash(password, 10);
+    }
+
+    // Check unique identification if changed
+    if (identificacion && identificacion.trim() !== user.identificacion) {
+      if (isUsingMemoryDb) {
+        const existId = memoryDb.users.find((u) => u.identificacion === identificacion.trim() && u.id !== user.id);
+        if (existId) return res.status(409).json({ message: "Ese número de documento ya está registrado por otro usuario" });
+      } else {
+        const [existId] = await pool.query("SELECT id FROM users WHERE identificacion = ? AND id != ? LIMIT 1", [identificacion.trim(), user.id]);
+        if (existId.length > 0) return res.status(409).json({ message: "Ese número de documento ya está registrado por otro usuario" });
+      }
+    }
+
+    const newNombre = nombre ? nombre.trim() : user.nombre;
+    const newTipoDoc = tipo_documento ? tipo_documento.trim() : (user.tipo_documento || "CC");
+    const newIdentificacion = identificacion ? identificacion.trim() : user.identificacion;
+    const newTelefono = telefono !== undefined ? telefono.trim() : (user.telefono || "");
+    const newBiografia = biografia !== undefined ? biografia.trim() : (user.biografia || "");
+    const newEspecialidad = especialidad !== undefined ? especialidad.trim() : (user.especialidad || "");
+    const newUbicacion = ubicacion !== undefined ? ubicacion.trim() : (user.ubicacion || "");
+    const newFoto = fotoFile ? `/uploads/${fotoFile.filename}` : user.foto;
+
+    if (isUsingMemoryDb) {
+      user.nombre = newNombre;
+      user.tipo_documento = newTipoDoc;
+      user.identificacion = newIdentificacion;
+      user.telefono = newTelefono;
+      user.biografia = newBiografia;
+      user.especialidad = newEspecialidad;
+      user.ubicacion = newUbicacion;
+      user.password = updatedPassword;
+      if (newFoto) user.foto = newFoto;
+    } else {
+      await pool.query(
+        `UPDATE users SET
+          nombre = ?,
+          tipo_documento = ?,
+          identificacion = ?,
+          telefono = ?,
+          biografia = ?,
+          especialidad = ?,
+          ubicacion = ?,
+          password = ?,
+          foto = COALESCE(?, foto)
+         WHERE id = ?`,
+        [newNombre, newTipoDoc, newIdentificacion, newTelefono, newBiografia, newEspecialidad, newUbicacion, updatedPassword, newFoto, user.id]
+      );
+      const [updatedRows] = await pool.query("SELECT * FROM users WHERE id = ?", [user.id]);
+      user = updatedRows[0];
+    }
+
+    const userPayload = buildUserResponse(user);
+    const newToken = jwt.sign(userPayload, JWT_SECRET, { expiresIn: "7d" });
+
+    return res.json({
+      message: "Perfil actualizado correctamente",
+      user: userPayload,
+      token: newToken,
+    });
+  } catch (error) {
+    console.error("Error al actualizar perfil:", error);
+    return res.status(500).json({ message: "Error al actualizar el perfil de usuario" });
+  }
+});
+
+// ADMIN ENDPOINTS (Protected with authMiddleware and requireRole(["admin"]))
+
+// GET ADMIN STATS
+app.get("/api/admin/stats", authMiddleware, requireRole(["admin"]), async (_req, res) => {
+  try {
+    let totalUsers = 0;
+    let totalArtesanos = 0;
+    let totalCompradores = 0;
+    let totalAdmins = 0;
+    let totalProducts = 0;
+    let totalOrders = 0;
+    let totalRevenue = 0;
+    let recentOrders = [];
+
+    if (isUsingMemoryDb) {
+      totalUsers = memoryDb.users.length;
+      totalArtesanos = memoryDb.users.filter((u) => u.rol === "artesano").length;
+      totalCompradores = memoryDb.users.filter((u) => u.rol === "comprador").length;
+      totalAdmins = memoryDb.users.filter((u) => u.rol === "admin").length;
+      totalProducts = memoryDb.products.length;
+      totalOrders = memoryDb.orders.length;
+      totalRevenue = memoryDb.orders
+        .filter((o) => o.status === "APPROVED")
+        .reduce((sum, o) => sum + (o.total || 0), 0);
+      recentOrders = memoryDb.orders.slice(0, 5);
+    } else {
+      const [userCounts] = await pool.query(`
+        SELECT 
+          COUNT(*) as totalUsers,
+          SUM(CASE WHEN rol = 'artesano' THEN 1 ELSE 0 END) as totalArtesanos,
+          SUM(CASE WHEN rol = 'comprador' THEN 1 ELSE 0 END) as totalCompradores,
+          SUM(CASE WHEN rol = 'admin' THEN 1 ELSE 0 END) as totalAdmins
+        FROM users
+      `);
+      totalUsers = userCounts[0]?.totalUsers || 0;
+      totalArtesanos = userCounts[0]?.totalArtesanos || 0;
+      totalCompradores = userCounts[0]?.totalCompradores || 0;
+      totalAdmins = userCounts[0]?.totalAdmins || 0;
+
+      const [prodCount] = await pool.query("SELECT COUNT(*) as totalProducts FROM products");
+      totalProducts = prodCount[0]?.totalProducts || 0;
+
+      const [orderStats] = await pool.query(`
+        SELECT 
+          COUNT(*) as totalOrders,
+          SUM(CASE WHEN status = 'APPROVED' THEN total ELSE 0 END) as totalRevenue
+        FROM orders
+      `);
+      totalOrders = orderStats[0]?.totalOrders || 0;
+      totalRevenue = Number(orderStats[0]?.totalRevenue || 0);
+
+      const [orders] = await pool.query("SELECT * FROM orders ORDER BY id DESC LIMIT 5");
+      recentOrders = orders;
+    }
+
+    return res.json({
+      stats: {
+        totalUsers,
+        totalArtesanos,
+        totalCompradores,
+        totalAdmins,
+        totalProducts,
+        totalOrders,
+        totalRevenue,
+        formattedRevenue: formatCurrency(totalRevenue),
+      },
+      recentOrders,
+    });
+  } catch (error) {
+    console.error("Error al obtener estadísticas:", error);
+    return res.status(500).json({ message: "Error al obtener estadísticas del sitio" });
+  }
+});
+
+// GET ALL USERS (ADMIN)
+app.get("/api/admin/users", authMiddleware, requireRole(["admin"]), async (_req, res) => {
+  try {
+    let usersList = [];
+    if (isUsingMemoryDb) {
+      usersList = memoryDb.users.map((u) => buildUserResponse(u));
+    } else {
+      const [rows] = await pool.query("SELECT * FROM users ORDER BY id DESC");
+      usersList = rows.map((u) => buildUserResponse(u));
+    }
+    return res.json({ users: usersList });
+  } catch (error) {
+    console.error("Error al obtener usuarios:", error);
+    return res.status(500).json({ message: "Error al consultar la lista de usuarios" });
+  }
+});
+
+// CHANGE USER ROLE (ADMIN)
+app.put("/api/admin/users/:id/role", authMiddleware, requireRole(["admin"]), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rol } = req.body;
+
+    const validRoles = ["artesano", "comprador", "admin"];
+    if (!validRoles.includes(rol)) {
+      return res.status(400).json({ message: "Rol no válido" });
+    }
+
+    if (isUsingMemoryDb) {
+      const user = memoryDb.users.find((u) => u.id === Number(id));
+      if (!user) return res.status(404).json({ message: "Usuario no encontrado" });
+      user.rol = rol;
+      return res.json({ message: "Rol de usuario actualizado correctamente", user: buildUserResponse(user) });
+    }
+
+    const [rows] = await pool.query("SELECT * FROM users WHERE id = ? LIMIT 1", [id]);
+    if (rows.length === 0) return res.status(404).json({ message: "Usuario no encontrado" });
+
+    await pool.query("UPDATE users SET rol = ? WHERE id = ?", [rol, id]);
+    const [updatedRows] = await pool.query("SELECT * FROM users WHERE id = ?", [id]);
+
+    return res.json({ message: "Rol de usuario actualizado correctamente", user: buildUserResponse(updatedRows[0]) });
+  } catch (error) {
+    console.error("Error al cambiar rol:", error);
+    return res.status(500).json({ message: "Error al actualizar el rol del usuario" });
+  }
+});
+
+// DELETE USER ACCOUNT (ADMIN)
+app.delete("/api/admin/users/:id", authMiddleware, requireRole(["admin"]), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (Number(id) === req.user.id) {
+      return res.status(400).json({ message: "No puedes eliminar tu propia cuenta de administrador en sesión" });
+    }
+
+    if (isUsingMemoryDb) {
+      const userIdx = memoryDb.users.findIndex((u) => u.id === Number(id));
+      if (userIdx === -1) return res.status(404).json({ message: "Usuario no encontrado" });
+
+      const deletedUser = memoryDb.users.splice(userIdx, 1)[0];
+      return res.json({ message: `Cuenta de ${deletedUser.nombre} eliminada con éxito` });
+    }
+
+    const [rows] = await pool.query("SELECT * FROM users WHERE id = ? LIMIT 1", [id]);
+    if (rows.length === 0) return res.status(404).json({ message: "Usuario no encontrado" });
+
+    await pool.query("DELETE FROM users WHERE id = ?", [id]);
+    return res.json({ message: `Cuenta de ${rows[0].nombre} eliminada con éxito` });
+  } catch (error) {
+    console.error("Error al eliminar usuario:", error);
+    return res.status(500).json({ message: "Error al eliminar la cuenta de usuario" });
   }
 });
 

@@ -57,3 +57,45 @@ export const resetPassword = async (token, password) => {
 
   return parseResponse(response);
 };
+
+export const getUserProfile = async () => {
+  const token = localStorage.getItem("auth_token");
+  let response;
+  try {
+    response = await fetch(`${API_URL}/api/user/profile`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  } catch {
+    response = await fetch("/api/user/profile", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
+  return parseResponse(response);
+};
+
+export const updateUserProfile = async (formData) => {
+  const token = localStorage.getItem("auth_token");
+  let response;
+  try {
+    response = await fetch(`${API_URL}/api/user/profile`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+  } catch {
+    response = await fetch("/api/user/profile", {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+  }
+  return parseResponse(response);
+};

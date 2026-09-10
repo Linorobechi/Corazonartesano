@@ -17,6 +17,8 @@ import CartDrawer from "./Components/CartDrawer.jsx";
 import Galeria from "./pages/Galeria.jsx";
 import Requisitos from "./pages/Requisitos.jsx";
 import ToastHost from "./Components/ToastHost.jsx";
+import Perfil from "./pages/Perfil.jsx";
+import AdminPanel from "./pages/AdminPanel.jsx";
 import { ProtectedRoute, PublicOnlyRoute, RoleRoute } from "./Components/AuthRoutes.jsx";
 
 function App() {
@@ -48,6 +50,12 @@ function App() {
           {/* Rutas protegidas genéricas (RF-05, RF-07, RF-09) */}
           <Route element={<ProtectedRoute />}>
             <Route path="/checkout" element={<Checkout />} />
+            <Route path="/perfil" element={<Perfil />} />
+          </Route>
+
+          {/* Rutas restringidas para Administrador */}
+          <Route element={<RoleRoute allowedRoles={["admin"]} />}>
+            <Route path="/admin" element={<AdminPanel />} />
           </Route>
 
           {/* RF-04: Rutas restringidas por Rol para Artesanos / Administradores (RF-06, RF-08) */}

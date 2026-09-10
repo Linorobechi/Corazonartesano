@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { HeartIcon } from "@heroicons/react/24/outline";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
-import { FaShoppingBag, FaSignOutAlt, FaGraduationCap, FaStore } from "react-icons/fa";
+import { FaShoppingBag, FaSignOutAlt, FaGraduationCap, FaStore, FaUser, FaIdCard, FaCrown } from "react-icons/fa";
+
+const API_URL = import.meta.env.VITE_API_URL || "";
 
 function Header() {
   const [open, setOpen] = useState(false);
@@ -76,6 +78,19 @@ function Header() {
       isActive ? "text-[#7a4b2c] font-semibold" : "text-gray-700 hover:text-[#7a4b2c]"
     }`;
 
+  const getAvatarSrc = () => {
+    if (!user?.foto) return null;
+    if (user.foto.startsWith("http")) return user.foto;
+    return `${API_URL}${user.foto}`;
+  };
+
+  const getInitials = (name) => {
+    if (!name) return "CA";
+    const parts = name.trim().split(" ");
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return parts[0].substring(0, 2).toUpperCase();
+  };
+
   // RF-01: Public Links accessible without prior authentication
   const publicLinks = [
     { to: "/", label: "Inicio" },
@@ -123,6 +138,20 @@ function Header() {
             )}
           </button>
 
+          {isAuthenticated && (
+            <NavLink
+              to="/perfil"
+              className="w-8 h-8 rounded-full bg-[#8b5e3c] text-white flex items-center justify-center font-bold text-xs overflow-hidden border border-[#ede3d8]"
+              title="Mi Perfil"
+            >
+              {getAvatarSrc() ? (
+                <img src={getAvatarSrc()} alt={user?.nombre} className="w-full h-full object-cover" />
+              ) : (
+                getInitials(user?.nombre)
+              )}
+            </NavLink>
+          )}
+
           <button
             className="text-2xl text-[#7a4b2c]"
             onClick={() => setOpen(!open)}
@@ -149,6 +178,14 @@ function Header() {
           {/* Role Specific Actions (RF-04) */}
           {isAuthenticated ? (
             <>
+              {user?.rol === "admin" && (
+                <NavLink to="/admin" className={linkClass}>
+                  <span className="flex items-center gap-1 font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 px-3 py-1 rounded-xl border border-amber-200 shadow-sm transition">
+                    <FaCrown className="text-amber-600" /> Panel Administrador
+                  </span>
+                </NavLink>
+              )}
+
               {isArtesano && (
                 <>
                   <NavLink to="/agregar-productos" className={linkClass}>
@@ -180,16 +217,35 @@ function Header() {
 
               <div className="h-4 w-[1px] bg-gray-200" />
 
+              {/* Artisan / User Profile Link & Avatar Badge */}
               <div className="flex items-center gap-3">
-                <span className="text-xs font-semibold text-[#8b5e3c] bg-[#faf7f2] px-3 py-1.5 rounded-full border border-[#ede3d8]">
-                  {user?.nombre?.split(" ")[0]} ({user?.rol || "comprador"})
-                </span>
+                <NavLink
+                  to="/perfil"
+                  className="flex items-center gap-2 bg-[#faf7f2] hover:bg-[#f3ece2] px-3 py-1.5 rounded-full border border-[#ede3d8] transition group"
+                  title="Ver y cambiar datos de perfil y foto personal"
+                >
+                  <div className="w-7 h-7 rounded-full bg-[#8b5e3c] text-white flex items-center justify-center font-bold text-[11px] overflow-hidden border border-white shrink-0 group-hover:scale-105 transition">
+                    {getAvatarSrc() ? (
+                      <img src={getAvatarSrc()} alt={user?.nombre} className="w-full h-full object-cover" />
+                    ) : (
+                      getInitials(user?.nombre)
+                    )}
+                  </div>
+                  <div className="flex flex-col text-left">
+                    <span className="text-xs font-bold text-[#7a4b2c] group-hover:underline leading-tight">
+                      {user?.nombre?.split(" ")[0]}
+                    </span>
+                    <span className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider">
+                      {user?.rol || "comprador"}
+                    </span>
+                  </div>
+                </NavLink>
 
                 {/* RF-05: Explicit Logout */}
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="flex items-center gap-1 text-xs font-bold text-red-600 hover:text-red-800 transition py-1 px-2.5 rounded-lg hover:bg-red-50"
+                  className="flex items-center gap-1 text-xs font-bold text-red-600 hover:text-red-800 transition py-1.5 px-2.5 rounded-lg hover:bg-red-50"
                   title="Cerrar sesión explícitamente"
                 >
                   <FaSignOutAlt />
@@ -246,21 +302,49 @@ function Header() {
 
             {isAuthenticated ? (
               <>
+                <NavLink
+                  to="/perfil"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 p-2 bg-[#fbf7f3] rounded-xl border border-[#eee3d7] text-[#7a4b2c] font-bold text-xs"
+                >
+                  <div className="w-8 h-8 rounded-full bg-[#8b5e3c] text-white flex items-center justify-center font-bold text-xs overflow-hidden">
+                    {getAvatarSrc() ? (
+                      <img src={getAvatarSrc()} alt={user?.nombre} className="w-full h-full object-cover" />
+                    ) : (
+                      getInitials(user?.nombre)
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-bold text-sm">{user?.nombre}</p>
+                    <p className="text-[10px] text-gray-500">Ver y editar mi perfil ({user?.rol})</p>
+                  </div>
+                </NavLink>
+
+                {user?.rol === "admin" && (
+                  <NavLink
+                    to="/admin"
+                    onClick={() => setOpen(false)}
+                    className="text-sm font-bold text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200 flex items-center gap-2"
+                  >
+                    <FaCrown className="text-amber-600" /> Panel Administrador
+                  </NavLink>
+                )}
+
                 {isArtesano && (
                   <>
                     <NavLink
                       to="/agregar-productos"
                       onClick={() => setOpen(false)}
-                      className="text-sm font-semibold text-[#8b5e3c]"
+                      className="text-sm font-semibold text-[#8b5e3c] flex items-center gap-2"
                     >
-                      Panel Artesano
+                      <FaStore /> Panel Artesano
                     </NavLink>
                     <NavLink
                       to="/capacitaciones"
                       onClick={() => setOpen(false)}
-                      className="text-sm font-semibold text-[#8b5e3c]"
+                      className="text-sm font-semibold text-[#8b5e3c] flex items-center gap-2"
                     >
-                      Capacitaciones Moodle
+                      <FaGraduationCap /> Capacitaciones Moodle
                     </NavLink>
                   </>
                 )}
