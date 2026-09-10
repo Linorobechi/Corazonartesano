@@ -3,6 +3,7 @@ import loginImg from "../assets/6.jpeg";
 import { motion } from "framer-motion";
 import Footer from "../Components/Footer";
 import { Link, useNavigate } from "react-router-dom";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 const emptyForm = {
   identifier: "",
@@ -14,6 +15,7 @@ const API_URL = import.meta.env.VITE_API_URL || "";
 export default function Login() {
   const navigate = useNavigate();
   const [form, setForm] = useState(emptyForm);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -143,15 +145,25 @@ export default function Login() {
                       ¿Olvidaste tu contraseña?
                     </Link>
                   </div>
-                  <input
-                    type="password"
-                    name="password"
-                    placeholder="••••••••"
-                    value={form.password}
-                    onChange={handleChange}
-                    required
-                    className="w-full p-3 rounded-xl bg-[#f1ece7] text-xs outline-none focus:ring-2 focus:ring-[#8b5e3c]"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      placeholder="••••••••"
+                      value={form.password}
+                      onChange={handleChange}
+                      required
+                      className="w-full p-3 pr-10 rounded-xl bg-[#f1ece7] text-xs outline-none focus:ring-2 focus:ring-[#8b5e3c]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#8b5e3c] transition p-1"
+                      title={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
+                    >
+                      {showPassword ? <FaEyeSlash className="text-sm" /> : <FaEye className="text-sm" />}
+                    </button>
+                  </div>
                 </div>
 
                 <button

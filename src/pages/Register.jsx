@@ -3,7 +3,7 @@ import registerImg from "../assets/5.jpeg";
 import { motion } from "framer-motion";
 import Footer from "../Components/Footer";
 import { Link, useNavigate } from "react-router-dom";
-import { FaUser, FaStore } from "react-icons/fa";
+import { FaUser, FaStore, FaEye, FaEyeSlash } from "react-icons/fa";
 
 const emptyForm = {
   nombre: "",
@@ -20,6 +20,8 @@ const API_URL = import.meta.env.VITE_API_URL || "";
 export default function Register() {
   const navigate = useNavigate();
   const [form, setForm] = useState(emptyForm);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
@@ -209,28 +211,44 @@ export default function Register() {
                   />
                 </div>
 
-                <div>
+                <div className="relative">
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     name="password"
                     placeholder="Contraseña"
                     value={form.password}
                     onChange={handleChange}
                     required
-                    className="w-full p-3 rounded-xl bg-[#f1ece7] text-xs outline-none focus:ring-2 focus:ring-[#8b5e3c]"
+                    className="w-full p-3 pr-10 rounded-xl bg-[#f1ece7] text-xs outline-none focus:ring-2 focus:ring-[#8b5e3c]"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#8b5e3c] transition p-1"
+                    title={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
+                  >
+                    {showPassword ? <FaEyeSlash className="text-sm" /> : <FaEye className="text-sm" />}
+                  </button>
                 </div>
 
-                <div>
+                <div className="relative">
                   <input
-                    type="password"
+                    type={showConfirmPassword ? "text" : "password"}
                     name="confirmPassword"
                     placeholder="Confirmar contraseña"
                     value={form.confirmPassword}
                     onChange={handleChange}
                     required
-                    className="w-full p-3 rounded-xl bg-[#f1ece7] text-xs outline-none focus:ring-2 focus:ring-[#8b5e3c]"
+                    className="w-full p-3 pr-10 rounded-xl bg-[#f1ece7] text-xs outline-none focus:ring-2 focus:ring-[#8b5e3c]"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#8b5e3c] transition p-1"
+                    title={showConfirmPassword ? "Ocultar contraseña" : "Ver contraseña"}
+                  >
+                    {showConfirmPassword ? <FaEyeSlash className="text-sm" /> : <FaEye className="text-sm" />}
+                  </button>
                 </div>
 
                 <button

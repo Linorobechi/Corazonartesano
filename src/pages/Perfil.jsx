@@ -16,6 +16,8 @@ import {
   FaStore,
   FaPen,
   FaCalendarAlt,
+  FaEye,
+  FaEyeSlash,
 } from "react-icons/fa";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
@@ -23,6 +25,9 @@ const API_URL = import.meta.env.VITE_API_URL || "";
 export default function Perfil() {
   const [activeTab, setActiveTab] = useState("vista"); // 'vista' | 'editar' | 'seguridad'
   const [loading, setLoading] = useState(true);
+  const [showPassActual, setShowPassActual] = useState(false);
+  const [showNuevaPass, setShowNuevaPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -773,43 +778,73 @@ export default function Perfil() {
                   <label className="block text-xs font-semibold text-gray-700 mb-1">
                     Contraseña Actual *
                   </label>
-                  <input
-                    type="password"
-                    name="passwordActual"
-                    value={passData.passwordActual}
-                    onChange={handlePassChange}
-                    required
-                    className="w-full p-3 rounded-xl bg-[#f1ece7] text-xs outline-none focus:ring-2 focus:ring-[#8b5e3c]"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassActual ? "text" : "password"}
+                      name="passwordActual"
+                      value={passData.passwordActual}
+                      onChange={handlePassChange}
+                      required
+                      className="w-full p-3 pr-10 rounded-xl bg-[#f1ece7] text-xs outline-none focus:ring-2 focus:ring-[#8b5e3c]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassActual(!showPassActual)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#8b5e3c] transition p-1"
+                      title={showPassActual ? "Ocultar contraseña" : "Ver contraseña"}
+                    >
+                      {showPassActual ? <FaEyeSlash className="text-sm" /> : <FaEye className="text-sm" />}
+                    </button>
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">
                     Nueva Contraseña *
                   </label>
-                  <input
-                    type="password"
-                    name="nuevaPassword"
-                    placeholder="Mínimo 6 caracteres"
-                    value={passData.nuevaPassword}
-                    onChange={handlePassChange}
-                    required
-                    className="w-full p-3 rounded-xl bg-[#f1ece7] text-xs outline-none focus:ring-2 focus:ring-[#8b5e3c]"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showNuevaPass ? "text" : "password"}
+                      name="nuevaPassword"
+                      placeholder="Mínimo 6 caracteres"
+                      value={passData.nuevaPassword}
+                      onChange={handlePassChange}
+                      required
+                      className="w-full p-3 pr-10 rounded-xl bg-[#f1ece7] text-xs outline-none focus:ring-2 focus:ring-[#8b5e3c]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNuevaPass(!showNuevaPass)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#8b5e3c] transition p-1"
+                      title={showNuevaPass ? "Ocultar contraseña" : "Ver contraseña"}
+                    >
+                      {showNuevaPass ? <FaEyeSlash className="text-sm" /> : <FaEye className="text-sm" />}
+                    </button>
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">
                     Confirmar Nueva Contraseña *
                   </label>
-                  <input
-                    type="password"
-                    name="confirmarPassword"
-                    value={passData.confirmarPassword}
-                    onChange={handlePassChange}
-                    required
-                    className="w-full p-3 rounded-xl bg-[#f1ece7] text-xs outline-none focus:ring-2 focus:ring-[#8b5e3c]"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showConfirmPass ? "text" : "password"}
+                      name="confirmarPassword"
+                      value={passData.confirmarPassword}
+                      onChange={handlePassChange}
+                      required
+                      className="w-full p-3 pr-10 rounded-xl bg-[#f1ece7] text-xs outline-none focus:ring-2 focus:ring-[#8b5e3c]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPass(!showConfirmPass)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#8b5e3c] transition p-1"
+                      title={showConfirmPass ? "Ocultar contraseña" : "Ver contraseña"}
+                    >
+                      {showConfirmPass ? <FaEyeSlash className="text-sm" /> : <FaEye className="text-sm" />}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="pt-3">
