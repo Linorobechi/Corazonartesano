@@ -1,4 +1,5 @@
-import { FaStar, FaShoppingCart, FaHeart } from "react-icons/fa";
+import { useEffect, useState } from "react";
+import { FaStar, FaShoppingCart, FaHeart, FaPlus } from "react-icons/fa";
 import Grid_Productos from "../Components/Grid_Productos";
 import Footer from "../Components/Footer";
 import PagosSeguros from "../Components/Pagos";
@@ -23,17 +24,55 @@ const stagger = {
 };
 
 export default function Productos() {
+  const [user, setUser] = useState(() => {
+    const storedUser = localStorage.getItem("auth_user");
+    if (!storedUser) return null;
+    try {
+      return JSON.parse(storedUser);
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    const syncAuthState = () => {
+      const storedUser = localStorage.getItem("auth_user");
+      if (!storedUser) {
+        setUser(null);
+        return;
+      }
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch {
+        setUser(null);
+      }
+    };
+
+    window.addEventListener("auth-changed", syncAuthState);
+    window.addEventListener("storage", syncAuthState);
+    syncAuthState();
+
+    return () => {
+      window.removeEventListener("auth-changed", syncAuthState);
+      window.removeEventListener("storage", syncAuthState);
+    };
+  }, []);
+
+  const isArtesano = user && (user.rol === "artesano" || user.rol === "admin");
+
   return (
     <>
       <section className="bg-[#e9dfd4] py-16 px-6 text-center relative">
-        <div className="max-w-6xl mx-auto mb-6 flex justify-start">
-          <Link
-            to="/agregar-productos"
-            className="inline-flex items-center rounded-full bg-[#8b5e3c] px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-[#754d31]"
-          >
-            Agregar productos
-          </Link>
-        </div>
+        {isArtesano && (
+          <div className="max-w-6xl mx-auto mb-6 flex justify-start">
+            <Link
+              to="/agregar-productos"
+              className="inline-flex items-center gap-2 rounded-full bg-[#8b5e3c] px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-[#754d31] transition hover:scale-105"
+            >
+              <FaPlus /> Agregar productos
+            </Link>
+          </div>
+        )}
         
         {/* HEADER */}
         <motion.div
