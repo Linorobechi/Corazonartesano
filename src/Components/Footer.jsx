@@ -56,6 +56,11 @@ export default function Footer() {
                   Requisitos de Acceso
                 </Link>
               </li>
+              <li>
+                <Link to="/terminos" className="hover:text-white transition">
+                  Términos y Condiciones
+                </Link>
+              </li>
             </ul>
           </div>
 

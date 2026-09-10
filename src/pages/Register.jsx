@@ -269,7 +269,7 @@ export default function Register() {
                   />
                   <label htmlFor="aceptoTerminos" className="text-xs text-gray-700 cursor-pointer select-none">
                     Acepto los{" "}
-                    <Link to="/requisitos" className="text-[#8b5e3c] font-bold hover:underline" target="_blank">
+                    <Link to="/terminos" className="text-[#8b5e3c] font-bold hover:underline" target="_blank">
                       términos y condiciones
                     </Link>
                   </label>

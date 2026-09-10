@@ -16,6 +16,7 @@ import Capacitaciones from "./pages/Capacitaciones.jsx";
 import CartDrawer from "./Components/CartDrawer.jsx";
 import Galeria from "./pages/Galeria.jsx";
 import Requisitos from "./pages/Requisitos.jsx";
+import Terminos from "./pages/Terminos.jsx";
 import ToastHost from "./Components/ToastHost.jsx";
 import Perfil from "./pages/Perfil.jsx";
 import AdminPanel from "./pages/AdminPanel.jsx";
@@ -36,6 +37,8 @@ function App() {
           <Route path="/contacto" element={<Contacto />} />
           <Route path="/informacion-general" element={<InformacionGeneral />} />
           <Route path="/requisitos" element={<Requisitos />} />
+          <Route path="/terminos" element={<Terminos />} />
+          <Route path="/terminos-y-condiciones" element={<Terminos />} />
           <Route path="/galeria" element={<Galeria />} />
           <Route path="/productos" element={<Productos />} />
 
