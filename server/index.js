@@ -286,9 +286,15 @@ const ensureDatabase = async () => {
         imagen_key VARCHAR(80) NOT NULL,
         image_data LONGTEXT NULL,
         rating DECIMAL(2,1) NOT NULL DEFAULT 4.8,
+        destacado TINYINT(1) NOT NULL DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    const productColumns = await getTableColumns("products");
+    if (!productColumns.has("destacado")) {
+      await pool.query("ALTER TABLE products ADD COLUMN destacado TINYINT(1) NOT NULL DEFAULT 0");
+    }
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS orders (
@@ -523,14 +529,21 @@ app.get("/api/health", (_req, res) => {
   res.json({ ok: true, memoryDb: isUsingMemoryDb });
 });
 
-// RF-01 & RF-06: GET PRODUCTS
+// GET PRODUCTS
 app.get("/api/products", async (_req, res) => {
   try {
     if (isUsingMemoryDb) {
-      const formatted = memoryDb.products.map((p) => ({
+      const sorted = [...memoryDb.products].sort((a, b) => {
+        const destA = a.destacado ? 1 : 0;
+        const destB = b.destacado ? 1 : 0;
+        if (destB !== destA) return destB - destA;
+        return b.id - a.id;
+      });
+      const formatted = sorted.map((p) => ({
         ...p,
         precio: formatCurrency(Number(p.precio)),
         rawPrecio: Number(p.precio),
+        destacado: Boolean(p.destacado),
       }));
       return res.json({ products: formatted });
     }
@@ -545,10 +558,11 @@ app.get("/api/products", async (_req, res) => {
          p.precio,
          p.imagen_key,
          p.image_data,
-         p.rating
+         p.rating,
+         COALESCE(p.destacado, 0) AS destacado
        FROM products p
        LEFT JOIN users u ON u.id = p.author_user_id
-       ORDER BY p.id DESC`
+       ORDER BY p.destacado DESC, p.id DESC`
     );
 
     return res.json({
@@ -556,6 +570,7 @@ app.get("/api/products", async (_req, res) => {
         ...product,
         precio: formatCurrency(Number(product.precio)),
         rawPrecio: Number(product.precio),
+        destacado: Boolean(product.destacado),
       })),
     });
   } catch (_error) {
@@ -628,7 +643,27 @@ app.post("/api/products", authMiddleware, requireRole(["artesano", "admin"]), up
   }
 });
 
-// UPDATE PRODUCT (Artesano / Admin)
+const canUserManageProduct = (user, product) => {
+  if (!user || !product) return false;
+  // Admin permissions allow global management
+  if (user.rol === "admin") return true;
+  // Artisan permissions allow editing ONLY their own uploaded products
+  if (user.rol === "artesano") {
+    if (product.author_user_id && Number(product.author_user_id) === Number(user.id)) {
+      return true;
+    }
+    if (
+      user.nombre &&
+      product.autor &&
+      user.nombre.toLowerCase().trim() === product.autor.toLowerCase().trim()
+    ) {
+      return true;
+    }
+  }
+  return false;
+};
+
+// UPDATE PRODUCT (Artesano owner / Admin)
 app.put("/api/products/:id", authMiddleware, requireRole(["artesano", "admin"]), upload.single("image_file"), async (req, res) => {
   try {
     const { id } = req.params;
@@ -640,9 +675,8 @@ app.put("/api/products/:id", authMiddleware, requireRole(["artesano", "admin"]),
       if (prodIndex === -1) return res.status(404).json({ message: "Producto no encontrado" });
 
       const prod = memoryDb.products[prodIndex];
-      const canManage = req.user.rol === "admin" || req.user.rol === "artesano" || !prod.author_user_id || prod.author_user_id === req.user.id;
-      if (!canManage) {
-        return res.status(403).json({ message: "No tienes permiso para modificar este producto" });
+      if (!canUserManageProduct(req.user, prod)) {
+        return res.status(403).json({ message: "No tienes permiso para modificar este producto porque fue publicado por otro artesano." });
       }
 
       if (nombre) prod.nombre = nombre.trim();
@@ -657,9 +691,8 @@ app.put("/api/products/:id", authMiddleware, requireRole(["artesano", "admin"]),
     if (rows.length === 0) return res.status(404).json({ message: "Producto no encontrado" });
     const prod = rows[0];
 
-    const canManage = req.user.rol === "admin" || req.user.rol === "artesano" || !prod.author_user_id || prod.author_user_id === req.user.id;
-    if (!canManage) {
-      return res.status(403).json({ message: "No tienes permiso para modificar este producto" });
+    if (!canUserManageProduct(req.user, prod)) {
+      return res.status(403).json({ message: "No tienes permiso para modificar este producto porque fue publicado por otro artesano." });
     }
 
     const newName = nombre ? nombre.trim() : prod.nombre;
@@ -679,7 +712,7 @@ app.put("/api/products/:id", authMiddleware, requireRole(["artesano", "admin"]),
   }
 });
 
-// DELETE PRODUCT (Artesano / Admin)
+// DELETE PRODUCT (Artesano owner / Admin)
 app.delete("/api/products/:id", authMiddleware, requireRole(["artesano", "admin"]), async (req, res) => {
   try {
     const { id } = req.params;
@@ -689,9 +722,8 @@ app.delete("/api/products/:id", authMiddleware, requireRole(["artesano", "admin"
       if (prodIndex === -1) return res.status(404).json({ message: "Producto no encontrado" });
 
       const prod = memoryDb.products[prodIndex];
-      const canManage = req.user.rol === "admin" || req.user.rol === "artesano" || !prod.author_user_id || prod.author_user_id === req.user.id;
-      if (!canManage) {
-        return res.status(403).json({ message: "No tienes permiso para eliminar este producto" });
+      if (!canUserManageProduct(req.user, prod)) {
+        return res.status(403).json({ message: "No tienes permiso para eliminar este producto porque fue publicado por otro artesano." });
       }
 
       memoryDb.products.splice(prodIndex, 1);
@@ -702,9 +734,8 @@ app.delete("/api/products/:id", authMiddleware, requireRole(["artesano", "admin"
     if (rows.length === 0) return res.status(404).json({ message: "Producto no encontrado" });
     const prod = rows[0];
 
-    const canManage = req.user.rol === "admin" || req.user.rol === "artesano" || !prod.author_user_id || prod.author_user_id === req.user.id;
-    if (!canManage) {
-      return res.status(403).json({ message: "No tienes permiso para eliminar este producto" });
+    if (!canUserManageProduct(req.user, prod)) {
+      return res.status(403).json({ message: "No tienes permiso para eliminar este producto porque fue publicado por otro artesano." });
     }
 
     await pool.query("DELETE FROM products WHERE id = ?", [id]);
@@ -712,6 +743,45 @@ app.delete("/api/products/:id", authMiddleware, requireRole(["artesano", "admin"
   } catch (error) {
     console.error("Error al eliminar producto:", error);
     return res.status(500).json({ message: "Error al eliminar producto" });
+  }
+});
+
+// TOGGLE PRODUCT DESTACADO / PRIMORDIAL (ADMIN)
+app.put("/api/admin/products/:id/destacado", authMiddleware, requireRole(["admin"]), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { destacado } = req.body;
+
+    if (isUsingMemoryDb) {
+      const prod = memoryDb.products.find((p) => p.id === Number(id));
+      if (!prod) return res.status(404).json({ message: "Producto no encontrado" });
+      const newStatus = destacado !== undefined ? Boolean(destacado) : !prod.destacado;
+      prod.destacado = newStatus;
+      return res.json({
+        message: newStatus
+          ? `"${prod.nombre}" es ahora un producto primordial (saldrá de primero en el catálogo).`
+          : `"${prod.nombre}" quitado de productos primordiales.`,
+        destacado: newStatus,
+        product: prod,
+      });
+    }
+
+    const [rows] = await pool.query("SELECT * FROM products WHERE id = ? LIMIT 1", [id]);
+    if (rows.length === 0) return res.status(404).json({ message: "Producto no encontrado" });
+    const prod = rows[0];
+
+    const newStatus = destacado !== undefined ? Boolean(destacado) : !Boolean(prod.destacado);
+    await pool.query("UPDATE products SET destacado = ? WHERE id = ?", [newStatus ? 1 : 0, id]);
+
+    return res.json({
+      message: newStatus
+        ? `"${prod.nombre}" es ahora un producto primordial (saldrá de primero en el catálogo).`
+        : `"${prod.nombre}" quitado de productos primordiales.`,
+      destacado: newStatus,
+    });
+  } catch (error) {
+    console.error("Error al cambiar estado primordial de producto:", error);
+    return res.status(500).json({ message: "Error al actualizar estado primordial del producto" });
   }
 });
 

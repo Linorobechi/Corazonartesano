@@ -174,6 +174,12 @@ export default function Grid_Productos() {
             transition={{ duration: 0.4 }}
           />
 
+          {product.destacado && (
+            <div className="absolute top-3 left-3 bg-amber-500 text-white text-[10px] font-extrabold px-3 py-1 rounded-full shadow-md flex items-center gap-1 border border-amber-300">
+              ⭐ Primordial
+            </div>
+          )}
+
           <div className="absolute bottom-3 left-3 bg-white/95 backdrop-blur-md text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-sm text-gray-800">
             <FaStar className="text-yellow-500" />
             {product.rating || "4.8"}

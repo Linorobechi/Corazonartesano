@@ -253,9 +253,15 @@ export default function Panel() {
 
   const isMyProduct = (prod) => {
     if (!user) return false;
-    if (prod.author_user_id === user.id) return true;
+    if (prod.author_user_id && Number(prod.author_user_id) === Number(user.id)) return true;
     if (user.nombre && prod.autor && prod.autor.toLowerCase().trim() === user.nombre.toLowerCase().trim()) return true;
     return false;
+  };
+
+  const canEditProduct = (prod) => {
+    if (!user) return false;
+    if (user.rol === "admin") return true;
+    return isMyProduct(prod);
   };
 
   const displayedProducts = filterTab === "mis_productos"
@@ -584,23 +590,31 @@ export default function Panel() {
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleStartEdit(prod)}
-                          className="p-2.5 rounded-xl bg-amber-100 text-amber-800 hover:bg-amber-200 transition text-xs font-bold flex items-center gap-1"
-                          title="Editar producto"
-                        >
-                          <FaEdit /> <span className="hidden sm:inline">Editar</span>
-                        </button>
+                        {canEditProduct(prod) ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleStartEdit(prod)}
+                              className="p-2.5 rounded-xl bg-amber-100 text-amber-800 hover:bg-amber-200 transition text-xs font-bold flex items-center gap-1"
+                              title="Editar mi producto"
+                            >
+                              <FaEdit /> <span className="hidden sm:inline">Editar</span>
+                            </button>
 
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteProduct(prod.id, prod.nombre)}
-                          className="p-2.5 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 transition text-xs font-bold flex items-center gap-1"
-                          title="Eliminar producto"
-                        >
-                          <FaTrash /> <span className="hidden sm:inline">Eliminar</span>
-                        </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteProduct(prod.id, prod.nombre)}
+                              className="p-2.5 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 transition text-xs font-bold flex items-center gap-1"
+                              title="Eliminar mi producto"
+                            >
+                              <FaTrash /> <span className="hidden sm:inline">Eliminar</span>
+                            </button>
+                          </>
+                        ) : (
+                          <span className="text-[11px] font-semibold text-gray-400 bg-gray-100 px-2.5 py-1.5 rounded-xl">
+                            Solo lectura
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}

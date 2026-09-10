@@ -7,6 +7,7 @@ import {
   updateUserRole,
   deleteUserAccount,
   deleteProductAdmin,
+  toggleProductDestacado,
 } from "../api/admin";
 
 import {
@@ -24,6 +25,7 @@ import {
   FaSync,
   FaExclamationTriangle,
   FaChartLine,
+  FaStar,
 } from "react-icons/fa";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
@@ -112,6 +114,23 @@ export default function AdminPanel() {
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {
       setError(err.message || "Error al cambiar el rol.");
+    }
+  };
+
+  const handleToggleDestacado = async (productId, currentDestacado) => {
+    setError("");
+    setSuccess("");
+    try {
+      const res = await toggleProductDestacado(productId, !currentDestacado);
+      setSuccess(res.message || "Estado primordial actualizado.");
+      setProducts(
+        products.map((p) =>
+          p.id === productId ? { ...p, destacado: !currentDestacado } : p
+        )
+      );
+      setTimeout(() => setSuccess(""), 4000);
+    } catch (err) {
+      setError(err.message || "Error al actualizar estado del producto.");
     }
   };
 
@@ -616,10 +635,14 @@ export default function AdminPanel() {
                   {filteredProducts.map((p) => (
                     <div
                       key={p.id}
-                      className="bg-[#faf7f3] rounded-2xl p-4 border border-[#f1ece7] flex gap-3 items-center justify-between"
+                      className={`rounded-2xl p-4 border transition flex gap-3 items-center justify-between ${
+                        p.destacado
+                          ? "bg-amber-50/70 border-amber-300 shadow-sm"
+                          : "bg-[#faf7f3] border-[#f1ece7]"
+                      }`}
                     >
                       <div className="flex items-center gap-3 overflow-hidden">
-                        <div className="w-14 h-14 rounded-xl bg-gray-200 shrink-0 overflow-hidden border border-gray-300">
+                        <div className="w-14 h-14 rounded-xl bg-gray-200 shrink-0 overflow-hidden border border-gray-300 relative">
                           {getProductImage(p) ? (
                             <img
                               src={getProductImage(p)}
@@ -633,10 +656,17 @@ export default function AdminPanel() {
                           )}
                         </div>
                         <div className="overflow-hidden">
-                          <h4 className="font-bold text-xs text-gray-800 truncate">
-                            {p.nombre}
-                          </h4>
-                          <p className="text-[11px] text-gray-500 truncate">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h4 className="font-bold text-xs text-gray-800 truncate">
+                              {p.nombre}
+                            </h4>
+                            {p.destacado && (
+                              <span className="bg-amber-500 text-white text-[9px] font-extrabold px-2 py-0.5 rounded-full shadow-xs">
+                                ⭐ Primordial
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-gray-500 truncate mt-0.5">
                             Por: <span className="font-semibold text-[#8b5e3c]">{p.autor}</span>
                           </p>
                           <p className="text-xs font-extrabold text-[#7a4b2c] mt-0.5">
@@ -645,13 +675,30 @@ export default function AdminPanel() {
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => confirmDelete("product", p.id, p.nombre)}
-                        className="p-2.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-xl transition font-bold shrink-0"
-                        title="Eliminar este producto"
-                      >
-                        <FaTrash className="text-xs" />
-                      </button>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          onClick={() => handleToggleDestacado(p.id, p.destacado)}
+                          className={`p-2.5 rounded-xl font-bold transition flex items-center gap-1 text-xs ${
+                            p.destacado
+                              ? "bg-amber-500 text-white shadow-sm hover:bg-amber-600"
+                              : "bg-gray-100 text-gray-400 hover:bg-amber-100 hover:text-amber-700"
+                          }`}
+                          title={p.destacado ? "Quitar de primordiales" : "Hacer primordial (saldrá de primero en el catálogo)"}
+                        >
+                          <FaStar className="text-xs" />
+                          <span className="hidden sm:inline">
+                            {p.destacado ? "Primordial" : "Destacar"}
+                          </span>
+                        </button>
+
+                        <button
+                          onClick={() => confirmDelete("product", p.id, p.nombre)}
+                          className="p-2.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-xl transition font-bold"
+                          title="Eliminar este producto"
+                        >
+                          <FaTrash className="text-xs" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>

@@ -75,3 +75,12 @@ export const deleteProductAdmin = async (productId) => {
   });
   return parseResponse(response);
 };
+
+export const toggleProductDestacado = async (productId, destacado) => {
+  const response = await safeFetch(`/api/admin/products/${productId}/destacado`, {
+    method: "PUT",
+    headers: getAuthHeader(),
+    body: JSON.stringify({ destacado }),
+  });
+  return parseResponse(response);
+};
