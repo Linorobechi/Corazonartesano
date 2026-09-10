@@ -1573,18 +1573,45 @@ const getMoodleCoursesHandler = async (_req, res) => {
         ? moodleUrl
         : `${moodleUrl.replace(/\/$/, "")}/webservice/rest/server.php`;
 
-      const response = await axios.get(endpointUrl, {
-        params: {
-          wstoken: moodleToken,
-          wsfunction: "core_course_get_courses",
-          moodlewsrestformat: "json",
-        },
-      });
+      try {
+        const response = await axios.get(endpointUrl, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            Accept: "application/json, text/plain, */*",
+          },
+          params: {
+            wstoken: moodleToken,
+            wsfunction: "core_course_get_courses",
+            moodlewsrestformat: "json",
+          },
+        });
 
-      if (Array.isArray(response.data)) {
-        return res.json(response.data);
-      } else if (response.data && response.data.exception) {
-        console.warn("Moodle API response notice:", response.data.message);
+        if (Array.isArray(response.data)) {
+          return res.json(response.data);
+        } else if (response.data && (response.data.exception || response.data.error)) {
+          console.warn("Moodle API Notice:", response.data.message || response.data.error);
+        }
+      } catch (getErr) {
+        // Try POST as fallback for strict Moodle/Gnomio configurations
+        try {
+          const params = new URLSearchParams();
+          params.append("wstoken", moodleToken);
+          params.append("wsfunction", "core_course_get_courses");
+          params.append("moodlewsrestformat", "json");
+
+          const postRes = await axios.post(endpointUrl, params, {
+            headers: {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+          });
+
+          if (Array.isArray(postRes.data)) {
+            return res.json(postRes.data);
+          }
+        } catch (postErr) {
+          console.warn("Moodle API connection warning:", getErr.message);
+        }
       }
     }
 
