@@ -20,3 +20,32 @@ services:
         sync: false
       - key: JWT_SECRET
         sync: false
+      - key: WOMPI_PUBLIC_KEY
+        value: pub_test_IJJQqhI6kPJX5Ur4SmNqWSzFNGFuGHgL
+      - key: WOMPI_PRIVATE_KEY
+        value: prv_test_1vj4viJipydIqvDYPJ9iIff194NC94A1
+      - key: WOMPI_EVENTS_SECRET
+        value: test_events_fjrySglKsf7JV26Zt3j8admfHDCqljRt
+      - key: WOMPI_INTEGRITY_SECRET
+        value: test_integrity_3ao8BfKuIgf1pVEm7JSpobwkkX09jas3
+      - key: WOMPI_API_URL
+        value: https://sandbox.wompi.co/v1
+
+  - type: web
+    name: corazon-artesano-frontend
+    env: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: corazon-artesano-backend
+          property: host
+      - key: VITE_WOMPI_PUBLIC_KEY
+        value: pub_test_IJJQqhI6kPJX5Ur4SmNqWSzFNGFuGHgL

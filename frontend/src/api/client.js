@@ -1,34 +1,30 @@
-const API_URL = import.meta.env.VITE_API_URL || "";
+const RAW_API_URL = (import.meta.env.VITE_API_URL || "").trim();
+const DEFAULT_BACKEND_URL = "https://corazon-artesano-backend.onrender.com";
+
+const API_URL = RAW_API_URL
+  ? RAW_API_URL.startsWith("http")
+    ? RAW_API_URL
+    : `https://${RAW_API_URL}`
+  : DEFAULT_BACKEND_URL;
 
 /**
  * Cliente HTTP unificado para Corazón Artesano.
- * Maneja cabeceras de autorización, detección de entorno y fallbacks.
+ * Maneja cabeceras de autorización, detección de entorno y fallbacks de producción.
  */
 export const apiClient = async (endpoint, options = {}) => {
   const isLocal =
     typeof window !== "undefined" &&
     (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
 
-  const primaryUrl = isLocal
-    ? endpoint
-    : API_URL
-      ? `${API_URL}${endpoint}`
-      : endpoint;
+  // En entorno local usa la ruta relativa del proxy de Vite; en producción usa la URL del backend en Render/Vercel
+  const primaryUrl = isLocal ? endpoint : `${API_URL}${endpoint}`;
 
-  const fallbackUrl = isLocal
-    ? API_URL
-      ? `${API_URL}${endpoint}`
-      : null
-    : API_URL
-      ? endpoint
-      : null;
-
+  const fallbackUrl = isLocal ? `${API_URL}${endpoint}` : endpoint;
 
   const token = typeof localStorage !== "undefined" ? localStorage.getItem("auth_token") : null;
 
   const headers = new Headers(options.headers || {});
 
-  // Si no se especifica Content-Type y no es FormData, usar application/json por defecto para peticiones con body
   if (options.body && !(options.body instanceof FormData) && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
