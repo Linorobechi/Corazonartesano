@@ -16,10 +16,11 @@ export const apiClient = async (endpoint, options = {}) => {
     typeof window !== "undefined" &&
     (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
 
-  // En entorno local usa la ruta relativa del proxy de Vite; en producción usa la URL del backend en Render/Vercel
+  // En entorno local usa la ruta relativa del proxy de Vite; en producción usa la URL directa del backend en Render
   const primaryUrl = isLocal ? endpoint : `${API_URL}${endpoint}`;
 
-  const fallbackUrl = isLocal ? `${API_URL}${endpoint}` : endpoint;
+  // Solo en local se intenta fallback hacia la URL absoluta si falla el proxy
+  const fallbackUrl = isLocal && API_URL ? `${API_URL}${endpoint}` : null;
 
   const token = typeof localStorage !== "undefined" ? localStorage.getItem("auth_token") : null;
 
@@ -53,7 +54,9 @@ export const apiClient = async (endpoint, options = {}) => {
     if (fallbackUrl) {
       response = await fetch(fallbackUrl, fetchOptions);
     } else {
-      throw err;
+      throw new Error(
+        "No se pudo comunicar con el servidor en la nube. Si el backend de Render estaba suspendido, puede tardar unos 30 segundos en despertar. Por favor intenta nuevamente."
+      );
     }
   }
 
