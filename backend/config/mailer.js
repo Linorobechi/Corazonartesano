@@ -51,18 +51,42 @@ export const getMailConfig = () => {
   return { host, port, secure, user, pass, from };
 };
 
-// Forzar resolución IPv4 a nivel de DNS en Node 24 para evitar ENETUNREACH en contenedores sin IPv6 (Render)
-const ipv4Lookup = (hostname, options, callback) => {
-  const cb = typeof options === "function" ? options : callback;
-  const opts = typeof options === "object" ? options : {};
-  return dns.lookup(hostname, { ...opts, family: 4, all: false }, cb);
+import dnsPromises from "node:dns/promises";
+import net from "node:net";
+
+// Lista de IPs IPv4 oficiales de respaldo de Google smtp.gmail.com
+const GMAIL_IPV4_FALLBACKS = [
+  "172.253.147.109",
+  "172.253.147.108",
+  "142.250.141.108",
+  "142.250.141.109",
+  "74.125.137.108",
+  "74.125.137.109",
+  "142.251.2.108",
+  "142.251.2.109",
+];
+
+/**
+ * Resuelve dinámicamente direcciones IPv4 activas de Gmail sin tocar jamás IPv6
+ */
+export const getGmailIPv4Candidates = async () => {
+  try {
+    const resolved = await dnsPromises.resolve4("smtp.gmail.com");
+    if (resolved && resolved.length > 0) {
+      const unique = Array.from(new Set([...resolved, ...GMAIL_IPV4_FALLBACKS]));
+      return unique.sort(() => Math.random() - 0.5);
+    }
+  } catch (err) {
+    console.warn("⚠️ [MAILER] Error resolviendo DNS de smtp.gmail.com, usando IPs fijas:", err.message);
+  }
+  return GMAIL_IPV4_FALLBACKS.sort(() => Math.random() - 0.5);
 };
 
 /**
- * Crea o reutiliza el transportador de Nodemailer optimizado para Render y Producción
+ * Crea el transportador de Nodemailer conectándose directamente por IP numérica IPv4
  */
-export const createTransporter = (overridePort = null) => {
-  const { host, port, secure, user, pass } = getMailConfig();
+export const createTransporter = (options = {}) => {
+  const { host, port, user, pass } = getMailConfig();
 
   if (!user || !pass) {
     console.warn("⚠️ [MAILER] Faltan credenciales de correo (EMAIL_USER / EMAIL_PASS).");
@@ -70,21 +94,22 @@ export const createTransporter = (overridePort = null) => {
   }
 
   const isGmail = (host || "").includes("gmail") || (user || "").endsWith("@gmail.com");
-  const targetHost = isGmail ? "smtp.gmail.com" : host;
-  const targetPort = overridePort || port;
+  const targetPort = options.port || port || 587;
   const isSecure = targetPort === 465;
+  // Usar la IP IPv4 provista o la primera IP de respaldo de Gmail
+  const targetHost = options.host || (isGmail ? GMAIL_IPV4_FALLBACKS[0] : host);
 
   return nodemailer.createTransport({
     host: targetHost,
     port: targetPort,
     secure: isSecure,
-    family: 4, // Fuerza estrictamente IPv4
-    lookup: ipv4Lookup, // Resuelve DNS únicamente a direcciones IPv4 (A record)
-    connectionTimeout: 20000,
-    greetingTimeout: 15000,
-    socketTimeout: 25000,
+    servername: isGmail ? "smtp.gmail.com" : targetHost,
+    connectionTimeout: 12000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
     auth: { user, pass },
     tls: {
+      servername: isGmail ? "smtp.gmail.com" : targetHost,
       rejectUnauthorized: false,
       minVersion: "TLSv1.2",
     },
@@ -251,67 +276,67 @@ export const sendResetPasswordEmail = async (toEmail, resetToken, baseUrl) => {
     },
   };
 
-  try {
-    const info = await mailTransporter.sendMail(mailOptions);
-    console.log(`[EMAIL DELIVERED] A: ${toEmail} | Id: ${info.messageId} | Link: ${resetUrl}`);
-    return { success: true, messageId: info.messageId, resetUrl, realEmailSent: true };
-  } catch (err) {
-    console.warn(`[REINTENTO MAILER] Falló envío en puerto principal (${err.message}). Reintentando con puerto alternativo...`);
-    try {
-      const fallbackPort = (getMailConfig().port === 465) ? 587 : 465;
-      const fallbackTransporter = createTransporter(fallbackPort);
-      if (fallbackTransporter) {
-        const fallbackInfo = await fallbackTransporter.sendMail(mailOptions);
-        console.log(`[EMAIL DELIVERED FALLBACK ${fallbackPort}] A: ${toEmail} | Id: ${fallbackInfo.messageId}`);
-        return { success: true, messageId: fallbackInfo.messageId, resetUrl, realEmailSent: true };
+  // Intentar envío a través de las IPs numéricas IPv4 de Google (100% libre de IPv6 / ENETUNREACH)
+  const candidateIps = await getGmailIPv4Candidates();
+  const portsToTry = [587, 465];
+
+  for (const ip of candidateIps.slice(0, 4)) {
+    for (const testPort of portsToTry) {
+      try {
+        const directTransporter = createTransporter({ host: ip, port: testPort });
+        if (!directTransporter) continue;
+        const info = await directTransporter.sendMail(mailOptions);
+        console.log(`[EMAIL DELIVERED VIA IPv4 ${ip}:${testPort}] A: ${toEmail} | Id: ${info.messageId} | Link: ${resetUrl}`);
+        return { success: true, messageId: info.messageId, resetUrl, realEmailSent: true };
+      } catch (err) {
+        console.warn(`[INTENTO MAILER ${ip}:${testPort}]: ${err.message}`);
       }
-    } catch (fallbackErr) {
-      console.error(`[ERROR ENVIANDO CORREO REAL A ${toEmail}]:`, fallbackErr.message);
     }
-    return { success: true, error: err.message, resetUrl, realEmailSent: false, simulated: true };
   }
+
+  console.error(`[ERROR FATAL ENVIANDO CORREO REAL A ${toEmail}]: Se agotaron las IPs IPv4 de respaldo.`);
+  return { success: true, error: "Timeout en servidores SMTP", resetUrl, realEmailSent: false, simulated: true };
 };
 
 /**
  * Envío genérico de notificaciones por correo (órdenes, avisos de compra, etc.)
  */
 export const sendEmailNotification = async ({ to, subject, html, text }) => {
-  const mailTransporter = transporter || createTransporter();
+  const { user, pass, from } = getMailConfig();
 
-  if (mailTransporter) {
-    try {
-      const fromUser =
-        process.env.SMTP_FROM ||
-        process.env.EMAIL_FROM ||
-        process.env.SMTP_USER ||
-        process.env.EMAIL_USER ||
-        "Corazón Artesano <no-reply@corazonartesano.com>";
+  if (!user || !pass) {
+    console.log("==========================================");
+    console.log(`[SIMULATED EMAIL NOTIFICATION SENT TO: ${to}]`);
+    console.log(`Asunto: ${subject}`);
+    console.log(text || html);
+    console.log("==========================================");
+    return { success: true, realEmailSent: false };
+  }
 
-      const info = await mailTransporter.sendMail({
-        from: fromUser,
-        to,
-        subject,
-        text,
-        html,
-      });
+  const mailOptions = {
+    from,
+    to,
+    subject,
+    text,
+    html,
+  };
 
-      console.log(`[REAL EMAIL DELIVERED TO: ${to}] MessageId: ${info.messageId}`);
-      return { success: true, messageId: info.messageId, realEmailSent: true };
-    } catch (err) {
-      console.error(`[ERROR ENVIANDO CORREO A ${to}]:`, err.message);
-      return { success: false, error: err.message, realEmailSent: false };
+  const candidateIps = await getGmailIPv4Candidates();
+  for (const ip of candidateIps.slice(0, 3)) {
+    for (const testPort of [587, 465]) {
+      try {
+        const directTransporter = createTransporter({ host: ip, port: testPort });
+        if (!directTransporter) continue;
+        const info = await directTransporter.sendMail(mailOptions);
+        console.log(`[REAL EMAIL DELIVERED TO: ${to} VIA ${ip}:${testPort}] MessageId: ${info.messageId}`);
+        return { success: true, messageId: info.messageId, realEmailSent: true };
+      } catch (err) {
+        console.warn(`[FALLO NOTIFICACION ${ip}:${testPort}]: ${err.message}`);
+      }
     }
   }
 
-  // Fallback simulador para desarrollo cuando no están configuradas las variables SMTP
-  console.log("==========================================");
-  console.log(`[SIMULATED EMAIL NOTIFICATION SENT TO: ${to}]`);
-  console.log(`Asunto: ${subject}`);
-  console.log(text || html);
-  console.log("AVISO: Para envío real de correos, configura EMAIL_USER y EMAIL_PASS en .env o Render.");
-  console.log("==========================================");
-
-  return { success: true, realEmailSent: false };
+  return { success: false, realEmailSent: false };
 };
 
 export default {
