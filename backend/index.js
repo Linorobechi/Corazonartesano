@@ -29,7 +29,6 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
   })
 );
-app.options("*", cors()); // Manejo explícito de preflight OPTIONS
 app.use(express.json());
 
 // Servir archivos estáticos subidos
