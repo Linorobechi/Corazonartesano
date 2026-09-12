@@ -3,7 +3,6 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { pool, isUsingMemoryDb, memoryDb, JWT_SECRET } from "../config/db.js";
 import { buildUserResponse } from "../utils/formatters.js";
-import { sendResetPasswordEmail } from "../config/mailer.js";
 import { uploadFileToStorage } from "../utils/storage.js";
 
 /**
@@ -305,28 +304,12 @@ export const forgotPassword = async (req, res) => {
       });
     }
 
-    const clientOrigin =
-      req.body.origin ||
-      req.body.frontendUrl ||
-      req.headers.origin ||
-      (req.headers.referer ? new URL(req.headers.referer).origin : null);
-
-    let frontendOrigin = clientOrigin || process.env.FRONTEND_URL || process.env.VERCEL_FRONTEND_URL || "https://corazonartesano.vercel.app";
-    frontendOrigin = frontendOrigin.replace(/\/$/, "");
-
-    // Despachar el correo en segundo plano para respuesta inmediata al usuario (<50ms)
-    const resetUrl = `${frontendOrigin}/restablecer-password?token=${token}`;
-    sendResetPasswordEmail(normalizedEmail, token, frontendOrigin).catch((mailErr) => {
-      console.error(`[BACKGROUND EMAIL ERROR A ${normalizedEmail}]:`, mailErr.message);
-    });
-
     return res.json({
       success: true,
-      message: "Hemos verificado tu correo. Te enviamos las instrucciones de recuperación a tu bandeja de entrada.",
+      message: "Cuenta verificada con éxito. Procede a ingresar tu nueva contraseña.",
       email: normalizedEmail,
-      realEmailSent: true,
-      resetUrl,
-      tokenPreview: token,
+      token,
+      resetUrl: `/restablecer-password?token=${token}`,
     });
   } catch (error) {
     console.error("Error en forgot-password:", error);

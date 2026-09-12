@@ -1,36 +1,24 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import logoImg from "../assets/logo.jpeg";
 import { motion, AnimatePresence } from "framer-motion";
 import Footer from "../Components/Footer";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   FaEnvelope,
   FaCheckCircle,
   FaArrowLeft,
   FaPaperPlane,
-  FaRedo,
   FaInfoCircle,
   FaSpinner,
 } from "react-icons/fa";
 import { forgotPassword } from "../api/auth";
 
 export default function RecuperarPassword() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [successData, setSuccessData] = useState(null);
   const [error, setError] = useState("");
-  const [cooldown, setCooldown] = useState(0);
-
-  // Temporizador de cuenta regresiva para reenvío de correo
-  useEffect(() => {
-    let timer;
-    if (cooldown > 0) {
-      timer = setInterval(() => {
-        setCooldown((prev) => prev - 1);
-      }, 1000);
-    }
-    return () => clearInterval(timer);
-  }, [cooldown]);
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
@@ -46,14 +34,16 @@ export default function RecuperarPassword() {
 
     try {
       const data = await forgotPassword(targetEmail);
+      const token = data.token || data.tokenPreview;
+      if (token) {
+        navigate(`/restablecer-password?token=${token}`);
+        return;
+      }
       setSuccessData({
         email: targetEmail,
-        message: data.message || "Te hemos enviado las instrucciones para restablecer tu contraseña.",
-        realEmailSent: data.realEmailSent ?? true,
-        resetUrl: data.resetUrl || "",
-        tokenPreview: data.tokenPreview || data.simulatedToken || "",
+        message: data.message || "Cuenta verificada con éxito.",
+        token: token || "",
       });
-      setCooldown(30); // 30 segundos de espera para reintentar
     } catch (err) {
       setError(err.message || "Hubo un error al procesar la solicitud. Intenta nuevamente.");
     } finally {
@@ -172,56 +162,23 @@ export default function RecuperarPassword() {
 
                 <div>
                   <h3 className="text-xl font-bold text-gray-800">
-                    ¡Correo de Recuperación Enviado!
+                    ¡Cuenta Verificada con Éxito!
                   </h3>
                   <p className="text-xs text-gray-600 mt-2 leading-relaxed">
-                    Hemos enviado las instrucciones para restablecer tu contraseña a:
+                    Tu cuenta ha sido validada. Procede a ingresar tu nueva clave:
                   </p>
                   <p className="text-sm font-bold text-[#8b5e3c] mt-1 break-all bg-[#fbf8f5] py-1.5 px-3 rounded-lg border border-[#ebe0d4] inline-block">
                     {successData.email}
                   </p>
                 </div>
 
-                <div className="bg-[#fcfaf7] border border-[#eee4d9] rounded-2xl p-4 text-left space-y-2 text-xs text-gray-600">
-                  <div className="flex items-start gap-2">
-                    <span className="text-[#8b5e3c] font-bold">1.</span>
-                    <span>Revisa tu <strong>bandeja de entrada</strong> y haz clic en el botón para crear una nueva clave.</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-[#8b5e3c] font-bold">2.</span>
-                    <span>Si no lo ves en un par de minutos, verifica tu carpeta de <strong>Correo no deseado (Spam)</strong> o <strong>Promociones</strong>.</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-[#8b5e3c] font-bold">3.</span>
-                    <span>El enlace tiene una validez de <strong>1 hora</strong> por seguridad.</span>
-                  </div>
-                </div>
-
-                {/* Acciones de Reenvío o Cambio de correo */}
-                <div className="pt-2 space-y-2">
-                  <button
-                    type="button"
-                    onClick={() => handleSubmit()}
-                    disabled={loading || cooldown > 0}
-                    className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold border border-[#8b5e3c] text-[#8b5e3c] hover:bg-[#8b5e3c] hover:text-white transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                <div className="pt-2 space-y-3">
+                  <Link
+                    to={`/restablecer-password?token=${successData.token}`}
+                    className="w-full bg-[#8b5e3c] text-white py-3.5 px-4 rounded-xl hover:bg-[#754d31] font-semibold text-sm shadow-md flex items-center justify-center gap-2"
                   >
-                    {loading ? (
-                      <>
-                        <FaSpinner className="animate-spin" />
-                        <span>Reenviando...</span>
-                      </>
-                    ) : cooldown > 0 ? (
-                      <>
-                        <FaRedo className="text-[10px]" />
-                        <span>Reenviar correo en {cooldown}s</span>
-                      </>
-                    ) : (
-                      <>
-                        <FaRedo className="text-[10px]" />
-                        <span>¿No recibiste el correo? Reenviar</span>
-                      </>
-                    )}
-                  </button>
+                    <span>Crear Nueva Contraseña Ahora →</span>
+                  </Link>
 
                   <button
                     type="button"

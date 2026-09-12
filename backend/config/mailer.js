@@ -161,6 +161,51 @@ export const sendViaResend = async ({ to, subject, html, text }) => {
   }
 };
 
+/**
+ * Envío de correo mediante Brevo API por HTTPS (Puerto 443 estándar)
+ * Permite enviar a CUALQUIER destinatario del mundo sin necesidad de comprar dominio.
+ */
+export const sendViaBrevo = async ({ to, subject, html, text }) => {
+  const apiKey = (process.env.BREVO_API_KEY || "").trim();
+  if (!apiKey) return null;
+
+  const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER || "corazonartesano395@gmail.com";
+  const senderName = process.env.BREVO_SENDER_NAME || "Corazón Artesano";
+
+  try {
+    const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "api-key": apiKey,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        sender: { name: senderName, email: senderEmail },
+        to: [{ email: to }],
+        subject,
+        htmlContent: html,
+        textContent: text,
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      console.warn("⚠️ [BREVO API ERROR]:", data);
+      throw new Error(data.message || (typeof data === "object" ? JSON.stringify(data) : "Error en Brevo"));
+    }
+
+    return {
+      success: true,
+      messageId: data.messageId,
+      provider: "brevo",
+    };
+  } catch (err) {
+    console.error("❌ [BREVO API EXCEPTION]:", err.message);
+    throw err;
+  }
+};
+
 export const transporter = createTransporter();
 
 const LOGO_CDN_URL = "https://nuhsooerkqwuwcucwxcf.supabase.co/storage/v1/object/public/productos/logo.jpeg";
@@ -298,7 +343,26 @@ export const sendResetPasswordEmail = async (toEmail, resetToken, baseUrl) => {
     `Si no solicitaste este cambio, puedes ignorar este mensaje.\n\n` +
     `© Corazón Artesano - Sincelejo, Sucre`;
 
-  // 1. PRIORIDAD: Si está configurado RESEND_API_KEY, enviar de forma instantánea por HTTPS
+  // 1. PRIORIDAD A: Si está configurado BREVO_API_KEY, enviar por Brevo HTTPS (envía a CUALQUIER destinatario sin exigir dominio)
+  if (process.env.BREVO_API_KEY && process.env.BREVO_API_KEY.trim() !== "") {
+    try {
+      const brevoRes = await sendViaBrevo({
+        to: toEmail,
+        subject: "Recuperación de Contraseña - Corazón Artesano",
+        text: textContent,
+        html: htmlContent,
+      });
+
+      if (brevoRes && brevoRes.success) {
+        console.log(`[EMAIL DELIVERED VIA BREVO HTTPS] A: ${toEmail} | Id: ${brevoRes.messageId} | Link: ${resetUrl}`);
+        return { success: true, messageId: brevoRes.messageId, resetUrl, realEmailSent: true, provider: "brevo" };
+      }
+    } catch (brevoErr) {
+      console.warn(`[AVISO BREVO FALLÓ, INTENTANDO SIGUIENTE MÉTODO]: ${brevoErr.message}`);
+    }
+  }
+
+  // 1. PRIORIDAD B: Si está configurado RESEND_API_KEY, enviar por Resend HTTPS
   if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim() !== "") {
     try {
       const resendRes = await sendViaResend({
@@ -367,7 +431,20 @@ export const sendResetPasswordEmail = async (toEmail, resetToken, baseUrl) => {
  * Envío genérico de notificaciones por correo (órdenes, avisos de compra, etc.)
  */
 export const sendEmailNotification = async ({ to, subject, html, text }) => {
-  // 1. PRIORIDAD: Si está configurado RESEND_API_KEY, enviar por HTTPS
+  // 1. PRIORIDAD A: Si está configurado BREVO_API_KEY, enviar por Brevo HTTPS
+  if (process.env.BREVO_API_KEY && process.env.BREVO_API_KEY.trim() !== "") {
+    try {
+      const brevoRes = await sendViaBrevo({ to, subject, html, text });
+      if (brevoRes && brevoRes.success) {
+        console.log(`[REAL EMAIL DELIVERED VIA BREVO HTTPS TO: ${to}] Id: ${brevoRes.messageId}`);
+        return { success: true, messageId: brevoRes.messageId, realEmailSent: true, provider: "brevo" };
+      }
+    } catch (brevoErr) {
+      console.warn(`[BREVO NOTIFICACION FALLÓ, INTENTANDO SIGUIENTE]: ${brevoErr.message}`);
+    }
+  }
+
+  // 1. PRIORIDAD B: Si está configurado RESEND_API_KEY, enviar por HTTPS
   if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim() !== "") {
     try {
       const resendRes = await sendViaResend({ to, subject, html, text });
