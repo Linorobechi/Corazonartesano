@@ -22,18 +22,13 @@ export const getMailConfig = () => {
     process.env.MAIL_HOST ||
     "smtp.gmail.com";
 
-  const port = Number(
-    process.env.EMAIL_PORT ||
-    process.env.SMTP_PORT ||
-    process.env.MAIL_PORT ||
-    465
-  );
+  const rawPort = process.env.EMAIL_PORT || process.env.SMTP_PORT || process.env.MAIL_PORT;
+  const port = rawPort ? Number(rawPort) : 587;
 
   const secure =
-    process.env.EMAIL_SECURE === "true" ||
-    process.env.SMTP_SECURE === "true" ||
-    process.env.MAIL_SECURE === "true" ||
-    port === 465;
+    process.env.EMAIL_SECURE !== undefined
+      ? process.env.EMAIL_SECURE === "true"
+      : port === 465;
 
   const user =
     process.env.EMAIL_USER ||
@@ -59,7 +54,7 @@ export const getMailConfig = () => {
 /**
  * Crea o reutiliza el transportador de Nodemailer optimizado para Render y Producción
  */
-export const createTransporter = () => {
+export const createTransporter = (overridePort = null) => {
   const { host, port, secure, user, pass } = getMailConfig();
 
   if (!user || !pass) {
@@ -68,26 +63,22 @@ export const createTransporter = () => {
   }
 
   const isGmail = (host || "").includes("gmail") || (user || "").endsWith("@gmail.com");
-
-  // Para Gmail en Render (Linux), service: 'gmail' fuerza IPv4 y previene el error ENETUNREACH de IPv6
-  if (isGmail) {
-    return nodemailer.createTransport({
-      service: "gmail",
-      auth: { user, pass },
-      tls: {
-        rejectUnauthorized: false,
-      },
-    });
-  }
+  const targetHost = isGmail ? "smtp.gmail.com" : host;
+  const targetPort = overridePort || port;
+  const isSecure = targetPort === 465;
 
   return nodemailer.createTransport({
-    host: host || "smtp.gmail.com",
-    port: port || 465,
-    secure: secure !== undefined ? secure : true,
-    family: 4, // Fuerza IPv4 directo
+    host: targetHost,
+    port: targetPort,
+    secure: isSecure,
+    family: 4, // Fuerza estrictamente IPv4 para evitar ENETUNREACH en contenedores Linux de Render
+    connectionTimeout: 15000,
+    greetingTimeout: 10000,
+    socketTimeout: 20000,
     auth: { user, pass },
     tls: {
       rejectUnauthorized: false,
+      minVersion: "TLSv1.2",
     },
   });
 };
@@ -257,7 +248,18 @@ export const sendResetPasswordEmail = async (toEmail, resetToken, baseUrl) => {
     console.log(`[EMAIL DELIVERED] A: ${toEmail} | Id: ${info.messageId} | Link: ${resetUrl}`);
     return { success: true, messageId: info.messageId, resetUrl, realEmailSent: true };
   } catch (err) {
-    console.error(`[ERROR ENVIANDO CORREO REAL A ${toEmail}]:`, err.message);
+    console.warn(`[REINTENTO MAILER] Falló envío en puerto principal (${err.message}). Reintentando con puerto alternativo...`);
+    try {
+      const fallbackPort = (getMailConfig().port === 465) ? 587 : 465;
+      const fallbackTransporter = createTransporter(fallbackPort);
+      if (fallbackTransporter) {
+        const fallbackInfo = await fallbackTransporter.sendMail(mailOptions);
+        console.log(`[EMAIL DELIVERED FALLBACK ${fallbackPort}] A: ${toEmail} | Id: ${fallbackInfo.messageId}`);
+        return { success: true, messageId: fallbackInfo.messageId, resetUrl, realEmailSent: true };
+      }
+    } catch (fallbackErr) {
+      console.error(`[ERROR ENVIANDO CORREO REAL A ${toEmail}]:`, fallbackErr.message);
+    }
     return { success: true, error: err.message, resetUrl, realEmailSent: false, simulated: true };
   }
 };

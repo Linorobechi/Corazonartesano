@@ -11,7 +11,6 @@ import {
   FaRedo,
   FaInfoCircle,
   FaSpinner,
-  FaExternalLinkAlt,
 } from "react-icons/fa";
 import { forgotPassword } from "../api/auth";
 
@@ -232,22 +231,6 @@ export default function RecuperarPassword() {
                     Intentar con otro correo electrónico
                   </button>
                 </div>
-
-                {/* Asistente de acceso directo en entorno de desarrollo */}
-                {(successData.tokenPreview || successData.resetUrl) && (
-                  <div className="mt-3 p-3 bg-amber-50/70 border border-amber-200 rounded-xl text-left">
-                    <div className="flex items-center gap-1.5 text-amber-900 font-semibold text-[11px] mb-1">
-                      <FaExternalLinkAlt className="text-[10px]" />
-                      <span>Acceso Rápido de Prueba (Local / Dev):</span>
-                    </div>
-                    <Link
-                      to={`/restablecer-password?token=${successData.tokenPreview}`}
-                      className="text-xs text-[#8b5e3c] font-bold hover:underline block break-all"
-                    >
-                      Abrir enlace de restablecimiento directamente →
-                    </Link>
-                  </div>
-                )}
 
                 <div className="pt-4 border-t border-gray-100">
                   <Link

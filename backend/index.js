@@ -20,8 +20,16 @@ import apiRoutes from "./routes/index.js";
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middlewares globales
-app.use(cors());
+// Middlewares globales y CORS para producción (Vercel / Render)
+app.use(
+  cors({
+    origin: true, // Permite peticiones desde Vercel, localhost y cualquier origen autorizado
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
+  })
+);
+app.options("*", cors()); // Manejo explícito de preflight OPTIONS
 app.use(express.json());
 
 // Servir archivos estáticos subidos
