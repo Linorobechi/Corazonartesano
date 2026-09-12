@@ -5,7 +5,7 @@ import Footer from "../Components/Footer";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 
-const MotionLink = motion(Link);
+const MotionLink = motion.create ? motion.create(Link) : motion(Link);
 
 const fadeUp = {
   hidden: { opacity: 0, y: 40 },
