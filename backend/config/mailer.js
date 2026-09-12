@@ -51,6 +51,13 @@ export const getMailConfig = () => {
   return { host, port, secure, user, pass, from };
 };
 
+// Forzar resolución IPv4 a nivel de DNS en Node 24 para evitar ENETUNREACH en contenedores sin IPv6 (Render)
+const ipv4Lookup = (hostname, options, callback) => {
+  const cb = typeof options === "function" ? options : callback;
+  const opts = typeof options === "object" ? options : {};
+  return dns.lookup(hostname, { ...opts, family: 4, all: false }, cb);
+};
+
 /**
  * Crea o reutiliza el transportador de Nodemailer optimizado para Render y Producción
  */
@@ -71,10 +78,11 @@ export const createTransporter = (overridePort = null) => {
     host: targetHost,
     port: targetPort,
     secure: isSecure,
-    family: 4, // Fuerza estrictamente IPv4 para evitar ENETUNREACH en contenedores Linux de Render
-    connectionTimeout: 15000,
-    greetingTimeout: 10000,
-    socketTimeout: 20000,
+    family: 4, // Fuerza estrictamente IPv4
+    lookup: ipv4Lookup, // Resuelve DNS únicamente a direcciones IPv4 (A record)
+    connectionTimeout: 20000,
+    greetingTimeout: 15000,
+    socketTimeout: 25000,
     auth: { user, pass },
     tls: {
       rejectUnauthorized: false,
