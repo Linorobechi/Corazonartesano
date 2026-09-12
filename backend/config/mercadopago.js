@@ -2,9 +2,10 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 
+process.env.DOTENV_CONFIG_QUIET = "true";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, "../.env") });
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, "../.env"), quiet: true });
+dotenv.config({ quiet: true });
 
 export const MERCADOPAGO_PUBLIC_KEY =
   process.env.MERCADOPAGO_PUBLIC_KEY || "TEST-0d7b8cc8-39e1-4039-bbb0-0fe431aa861c";
@@ -45,7 +46,6 @@ export const createMercadoPagoPreference = async ({
         }
       : undefined,
     back_urls: backUrls,
-    auto_return: "approved",
     external_reference: String(externalReference),
     statement_descriptor: "CORAZON ARTESANO",
     payment_methods: {
@@ -53,7 +53,13 @@ export const createMercadoPagoPreference = async ({
     },
   };
 
-  if (notificationUrl) {
+  // auto_return solo es válido en Mercado Pago si back_urls.success es HTTPS pública (en localhost no se debe enviar)
+  if (backUrls?.success && backUrls.success.startsWith("https://")) {
+    preferencePayload.auto_return = "approved";
+  }
+
+  // Webhook solo si es HTTPS (en localhost Mercado Pago no acepta webhooks directos)
+  if (notificationUrl && notificationUrl.startsWith("https://")) {
     preferencePayload.notification_url = notificationUrl;
   }
 

@@ -4,8 +4,6 @@ import { motion } from "framer-motion";
 import Footer from "../Components/Footer";
 import { Link, useSearchParams } from "react-router-dom";
 import {
-  FaCreditCard,
-  FaUniversity,
   FaShieldAlt,
   FaCheckCircle,
   FaTimesCircle,
@@ -29,15 +27,6 @@ export default function Checkout() {
   const orderId = searchParams.get("order_id") || searchParams.get("external_reference");
   const paymentType = searchParams.get("payment_type");
 
-  const [paymentMethod, setPaymentMethod] = useState("mercadopago");
-  const [cardForm, setCardForm] = useState({
-    name: user?.nombre || "",
-    number: "4532 8901 2345 6789",
-    expiry: "12/28",
-    cvc: "888",
-  });
-
-  const [pseBank, setPseBank] = useState("Bancolombia");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -83,70 +72,22 @@ export default function Checkout() {
     }
   }, [urlStatus, clearCart]);
 
-  const handleCardChange = (e) => {
-    setCardForm({ ...cardForm, [e.target.name]: e.target.value });
-  };
-
   const handleProcessPayment = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      // Flujo 1: Mercado Pago Checkout Pro Oficial
-      if (paymentMethod === "mercadopago") {
-        const preferenceData = await createMercadoPagoPreference(cartItems);
-        const redirectUrl = preferenceData?.sandboxInitPoint || preferenceData?.initPoint;
+      const preferenceData = await createMercadoPagoPreference(cartItems);
+      const redirectUrl = preferenceData?.sandboxInitPoint || preferenceData?.initPoint;
 
-        if (redirectUrl) {
-          window.location.href = redirectUrl;
-          return;
-        }
-        throw new Error(preferenceData?.message || "No se pudo generar el enlace de pago de Mercado Pago");
+      if (redirectUrl) {
+        window.location.href = redirectUrl;
+        return;
       }
-
-      // Flujo 2: Simulación Local (Tarjeta / PSE / Transferencia)
-      const token = localStorage.getItem("auth_token");
-      if (!token) {
-        throw new Error("Debes iniciar sesión para finalizar la compra");
-      }
-
-      const payload = {
-        items: cartItems,
-        paymentMethod:
-          paymentMethod === "card"
-            ? "Tarjeta de Crédito / Débito (Simulada)"
-            : paymentMethod === "pse"
-            ? `PSE (${pseBank})`
-            : "Transferencia / Nequi",
-        paymentDetails: {
-          cardNumber: cardForm.number,
-          cardName: cardForm.name,
-          bank: pseBank,
-        },
-      };
-
-      const response = await fetch("/api/checkout", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "No se pudo procesar la transacción");
-      }
-
-      setResult(data);
-      if (data.status === "APPROVED") {
-        clearCart();
-      }
+      throw new Error(preferenceData?.message || "No se pudo generar el enlace de pago de Mercado Pago");
     } catch (err) {
-      setError(err.message || "Ocurrió un problema al procesar el pago");
+      setError(err.message || "Ocurrió un problema al conectar con Mercado Pago");
     } finally {
       setLoading(false);
     }
@@ -183,7 +124,7 @@ export default function Checkout() {
             </span>
             <h1 className="text-3xl font-bold text-[#8b5e3c]">Finalizar Compra</h1>
             <p className="text-xs text-gray-600">
-              Pagos protegidos mediante cifrado de 256 bits y verificación instantánea.
+              Pagos protegidos mediante cifrado de 256 bits y verificación instantánea con Mercado Pago Colombia.
             </p>
           </div>
 
@@ -309,7 +250,7 @@ export default function Checkout() {
                   </div>
 
                   <p className="text-sm text-gray-600">
-                    La pasarela de pago no pudo completar la transacción o fue cancelada. Por favor verifica los datos de tu tarjeta o intenta con otro medio de pago.
+                    La pasarela de pago no pudo completar la transacción o fue cancelada. Por favor verifica tus datos o intenta con otro medio de pago en Mercado Pago.
                   </p>
 
                   <button
@@ -324,195 +265,71 @@ export default function Checkout() {
           ) : (
             /* CHECKOUT FORM */
             <div className="grid lg:grid-cols-3 gap-8">
-              {/* Payment Methods & Form */}
+              {/* Payment Info & Form */}
               <div className="lg:col-span-2 space-y-6">
-                {/* Method selector */}
+                {/* Method presentation */}
                 <div className="bg-white p-6 rounded-3xl shadow-sm border border-[#eae0d5] space-y-4">
-                  <h3 className="text-lg font-bold text-gray-800">1. Selecciona Método de Pago</h3>
-                  <div className="grid sm:grid-cols-3 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod("mercadopago")}
-                      className={`p-4 rounded-2xl border text-center flex flex-col items-center gap-2 transition relative ${
-                        paymentMethod === "mercadopago"
-                          ? "border-[#009ee3] bg-[#f0f9ff] text-[#007eb5] font-bold ring-2 ring-[#009ee3]/20"
-                          : "border-gray-200 text-gray-600 hover:bg-gray-50"
-                      }`}
-                    >
-                      <span className="absolute -top-2.5 right-3 bg-[#009ee3] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs">
-                        Oficial
-                      </span>
-                      <div className="w-8 h-8 rounded-full bg-[#009ee3]/10 text-[#009ee3] flex items-center justify-center">
-                        <FaShieldAlt className="text-lg" />
+                  <h3 className="text-lg font-bold text-gray-800">Método de Pago</h3>
+                  <div className="p-4 rounded-2xl border-2 border-[#009ee3] bg-[#f0f9ff] flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-[#009ee3] text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                      <FaShieldAlt className="text-2xl" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-gray-900">Mercado Pago Colombia</h4>
+                        <span className="bg-[#009ee3] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                          Oficial
+                        </span>
                       </div>
-                      <span className="text-xs font-semibold">Mercado Pago</span>
-                      <span className="text-[10px] text-gray-500">PSE, Tarjetas, Nequi, Efecty</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod("card")}
-                      className={`p-4 rounded-2xl border text-center flex flex-col items-center gap-2 transition ${
-                        paymentMethod === "card"
-                          ? "border-[#8b5e3c] bg-[#fbf7f3] text-[#8b5e3c] font-bold"
-                          : "border-gray-200 text-gray-600 hover:bg-gray-50"
-                      }`}
-                    >
-                      <FaCreditCard className="text-2xl" />
-                      <span className="text-xs">Tarjeta (Simulada)</span>
-                      <span className="text-[10px] text-gray-500">Prueba rápida offline</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod("pse")}
-                      className={`p-4 rounded-2xl border text-center flex flex-col items-center gap-2 transition ${
-                        paymentMethod === "pse"
-                          ? "border-[#8b5e3c] bg-[#fbf7f3] text-[#8b5e3c] font-bold"
-                          : "border-gray-200 text-gray-600 hover:bg-gray-50"
-                      }`}
-                    >
-                      <FaUniversity className="text-2xl" />
-                      <span className="text-xs">PSE (Simulado)</span>
-                      <span className="text-[10px] text-gray-500">Prueba rápida offline</span>
-                    </button>
+                      <p className="text-xs text-gray-600 mt-0.5">
+                        PSE, Tarjetas de Crédito y Débito, Nequi y Efectivo en Efecty.
+                      </p>
+                    </div>
                   </div>
                 </div>
 
-                {/* Method Form */}
+                {/* Form */}
                 <form
                   onSubmit={handleProcessPayment}
-                  className="bg-white p-6 rounded-3xl shadow-sm border border-[#eae0d5] space-y-4"
+                  className="bg-white p-6 rounded-3xl shadow-sm border border-[#eae0d5] space-y-5"
                 >
-                  <h3 className="text-lg font-bold text-gray-800">2. Datos de Pago</h3>
+                  <h3 className="text-lg font-bold text-gray-800">Confirmación y Pago</h3>
 
-                  {paymentMethod === "mercadopago" && (
-                    <div className="space-y-4">
-                      <div className="p-4 bg-gradient-to-br from-[#009ee3]/10 via-[#009ee3]/5 to-transparent border border-[#009ee3]/30 rounded-2xl space-y-3">
-                        <div className="flex items-center gap-2">
-                          <span className="bg-[#009ee3] text-white text-xs font-bold px-2.5 py-1 rounded-lg">
-                            Mercado Pago Oficial
-                          </span>
-                          <span className="text-xs text-gray-600 font-medium">Colombia (COP)</span>
-                        </div>
-                        <p className="text-xs text-gray-700 leading-relaxed">
-                          Paga de forma rápida y 100% protegida. Mercado Pago admite todos los medios de pago autorizados en Colombia:
-                        </p>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
-                          <div className="bg-white p-2.5 rounded-xl border border-gray-100 text-center shadow-xs">
-                            <p className="text-[11px] font-bold text-gray-800">PSE</p>
-                            <p className="text-[9px] text-gray-500">Débito bancario</p>
-                          </div>
-                          <div className="bg-white p-2.5 rounded-xl border border-gray-100 text-center shadow-xs">
-                            <p className="text-[11px] font-bold text-gray-800">Tarjetas</p>
-                            <p className="text-[9px] text-gray-500">Crédito y Débito</p>
-                          </div>
-                          <div className="bg-white p-2.5 rounded-xl border border-gray-100 text-center shadow-xs">
-                            <p className="text-[11px] font-bold text-gray-800">Nequi</p>
-                            <p className="text-[9px] text-gray-500">Billetera digital</p>
-                          </div>
-                          <div className="bg-white p-2.5 rounded-xl border border-gray-100 text-center shadow-xs">
-                            <p className="text-[11px] font-bold text-gray-800">Efecty</p>
-                            <p className="text-[9px] text-gray-500">Efectivo sin tarjeta</p>
-                          </div>
-                        </div>
-                        <p className="text-[11px] text-gray-500 flex items-center gap-1.5 pt-1">
-                          <FaLock className="text-[10px] text-green-600" /> Transacción encriptada con tecnología SSL de 256 bits.
-                        </p>
+                  <div className="p-5 bg-gradient-to-br from-[#009ee3]/10 via-[#009ee3]/5 to-transparent border border-[#009ee3]/30 rounded-2xl space-y-4">
+                    <div className="flex items-center gap-2">
+                      <span className="bg-[#009ee3] text-white text-xs font-bold px-2.5 py-1 rounded-lg">
+                        Mercado Pago Oficial
+                      </span>
+                      <span className="text-xs text-gray-600 font-medium">Colombia (MCO - COP)</span>
+                    </div>
+
+                    <p className="text-xs text-gray-700 leading-relaxed">
+                      Al hacer clic en <strong>Pagar con Mercado Pago</strong>, serás redirigido a la pasarela segura oficial de Mercado Pago Colombia para seleccionar tu método favorito y completar la transacción.
+                    </p>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <div className="bg-white p-2.5 rounded-xl border border-gray-100 text-center shadow-xs">
+                        <p className="text-[11px] font-bold text-gray-800">PSE</p>
+                        <p className="text-[9px] text-gray-500">Cualquier banco</p>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-xl border border-gray-100 text-center shadow-xs">
+                        <p className="text-[11px] font-bold text-gray-800">Tarjetas</p>
+                        <p className="text-[9px] text-gray-500">Crédito y Débito</p>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-xl border border-gray-100 text-center shadow-xs">
+                        <p className="text-[11px] font-bold text-gray-800">Nequi</p>
+                        <p className="text-[9px] text-gray-500">Billetera virtual</p>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-xl border border-gray-100 text-center shadow-xs">
+                        <p className="text-[11px] font-bold text-gray-800">Efecty</p>
+                        <p className="text-[9px] text-gray-500">Efectivo en punto</p>
                       </div>
                     </div>
-                  )}
 
-                  {paymentMethod === "card" && (
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">
-                          Nombre en la Tarjeta
-                        </label>
-                        <input
-                          name="name"
-                          value={cardForm.name}
-                          onChange={handleCardChange}
-                          required
-                          placeholder="Nombre del Titular"
-                          className="w-full px-4 py-3 rounded-xl bg-[#f1ece7] text-sm outline-none focus:ring-2 focus:ring-[#8b5e3c]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">
-                          Número de Tarjeta
-                        </label>
-                        <input
-                          name="number"
-                          value={cardForm.number}
-                          onChange={handleCardChange}
-                          required
-                          placeholder="4532 0000 0000 0000"
-                          className="w-full px-4 py-3 rounded-xl bg-[#f1ece7] text-sm outline-none focus:ring-2 focus:ring-[#8b5e3c]"
-                        />
-                        <p className="text-[10px] text-gray-500 mt-1">
-                          Tip: Tarjetas que terminen en <strong>0000</strong> simularán un pago RECHAZADO para pruebas de notificación.
-                        </p>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-gray-700 mb-1">
-                            Vencimiento
-                          </label>
-                          <input
-                            name="expiry"
-                            value={cardForm.expiry}
-                            onChange={handleCardChange}
-                            required
-                            placeholder="MM/AA"
-                            className="w-full px-4 py-3 rounded-xl bg-[#f1ece7] text-sm outline-none focus:ring-2 focus:ring-[#8b5e3c]"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-semibold text-gray-700 mb-1">
-                            CVC / CVV
-                          </label>
-                          <input
-                            name="cvc"
-                            value={cardForm.cvc}
-                            onChange={handleCardChange}
-                            required
-                            placeholder="123"
-                            maxLength="4"
-                            className="w-full px-4 py-3 rounded-xl bg-[#f1ece7] text-sm outline-none focus:ring-2 focus:ring-[#8b5e3c]"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {paymentMethod === "pse" && (
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">
-                          Selecciona tu Banco
-                        </label>
-                        <select
-                          value={pseBank}
-                          onChange={(e) => setPseBank(e.target.value)}
-                          className="w-full px-4 py-3 rounded-xl bg-[#f1ece7] text-sm outline-none focus:ring-2 focus:ring-[#8b5e3c]"
-                        >
-                          <option value="Bancolombia">Bancolombia</option>
-                          <option value="Davivienda">Davivienda</option>
-                          <option value="Nequi">Nequi</option>
-                          <option value="Banco de Bogotá">Banco de Bogotá</option>
-                          <option value="BBVA Colombia">BBVA Colombia</option>
-                        </select>
-                      </div>
-
-                      <p className="text-xs text-gray-500 bg-[#faf7f2] p-3 rounded-xl border border-[#ede3d8]">
-                        Al hacer clic en pagar, se simulará la transacción bancaria de {pseBank}.
-                      </p>
-                    </div>
-                  )}
+                    <p className="text-[11px] text-gray-500 flex items-center gap-1.5">
+                      <FaLock className="text-[10px] text-green-600" /> Transacción encriptada con tecnología SSL de 256 bits y Checkout Pro oficial.
+                    </p>
+                  </div>
 
                   {error && (
                     <p className="text-xs text-red-600 bg-red-50 p-3 rounded-xl border border-red-200">
@@ -523,26 +340,13 @@ export default function Checkout() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className={`w-full py-3.5 rounded-xl transition font-bold text-sm shadow-md flex items-center justify-center gap-2 disabled:opacity-70 ${
-                      paymentMethod === "mercadopago"
-                        ? "bg-[#009ee3] hover:bg-[#0087c2] text-white"
-                        : "bg-[#8b5e3c] hover:bg-[#754d31] text-white"
-                    }`}
+                    className="w-full py-3.5 rounded-xl transition font-bold text-sm shadow-md flex items-center justify-center gap-2 disabled:opacity-70 bg-[#009ee3] hover:bg-[#0087c2] text-white"
                   >
-                    {paymentMethod === "mercadopago" ? (
-                      <>
-                        <FaShieldAlt />
-                        {loading
-                          ? "Conectando con Mercado Pago..."
-                          : `Pagar ${formatCurrency(total)} con Mercado Pago`}
-                        <FaExternalLinkAlt className="text-xs ml-1" />
-                      </>
-                    ) : (
-                      <>
-                        <FaLock />
-                        {loading ? "Procesando Pago..." : `Pagar ${formatCurrency(total)}`}
-                      </>
-                    )}
+                    <FaShieldAlt />
+                    {loading
+                      ? "Conectando con Mercado Pago..."
+                      : `Pagar ${formatCurrency(total)} con Mercado Pago`}
+                    <FaExternalLinkAlt className="text-xs ml-1" />
                   </button>
                 </form>
               </div>

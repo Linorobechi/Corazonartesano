@@ -3,9 +3,10 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 
+process.env.DOTENV_CONFIG_QUIET = "true";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, "../.env") });
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, "../.env"), quiet: true });
+dotenv.config({ quiet: true });
 
 const SUPABASE_URL = process.env.SUPABASE_URL || "https://nuhsooerkqwuwcucwxcf.supabase.co";
 const SUPABASE_KEY =

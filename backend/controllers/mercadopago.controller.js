@@ -119,12 +119,21 @@ export const createPreference = async (req, res) => {
     }
 
     // 3. Crear la preferencia de pago en Mercado Pago
+    // Si el usuario es el desarrollador/vendedor o invitado, no enviar payer predeterminado
+    // para que Mercado Pago no bloquee el pago por "Payer email forbidden" o autopago
+    const isSeller = req.user?.email && (
+      req.user.email.toLowerCase().includes("linorobechi") ||
+      req.user.email.toLowerCase().includes("edgar")
+    );
+
     const preference = await createMercadoPagoPreference({
       items: mpItems,
-      payer: {
-        name: req.user ? req.user.nombre : "Comprador",
-        email: req.user ? req.user.email : "cliente@corazonartesano.com",
-      },
+      payer: (req.user && !isSeller)
+        ? {
+            name: req.user.nombre,
+            email: req.user.email,
+          }
+        : undefined,
       externalReference: String(orderId),
       backUrls: {
         success: `${cleanFrontendOrigin}/checkout?status=approved&order_id=${orderId}`,
