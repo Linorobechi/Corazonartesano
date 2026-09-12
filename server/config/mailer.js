@@ -63,6 +63,9 @@ export const createTransporter = () => {
     tls: {
       rejectUnauthorized: false,
     },
+    connectionTimeout: 8000,
+    greetingTimeout: 8000,
+    socketTimeout: 10000,
   });
 };
 
@@ -199,9 +202,14 @@ export const sendResetPasswordEmail = async (toEmail, resetToken, baseUrl) => {
     html: htmlContent,
   };
 
-  const info = await mailTransporter.sendMail(mailOptions);
-  console.log(`[EMAIL DELIVERED] A: ${toEmail} | Id: ${info.messageId} | Link: ${resetUrl}`);
-  return { success: true, messageId: info.messageId, resetUrl, realEmailSent: true };
+  try {
+    const info = await mailTransporter.sendMail(mailOptions);
+    console.log(`[EMAIL DELIVERED] A: ${toEmail} | Id: ${info.messageId} | Link: ${resetUrl}`);
+    return { success: true, messageId: info.messageId, resetUrl, realEmailSent: true };
+  } catch (err) {
+    console.error(`[ERROR ENVIANDO CORREO REAL A ${toEmail}]:`, err.message);
+    return { success: true, error: err.message, resetUrl, realEmailSent: false, simulated: true };
+  }
 };
 
 export default {

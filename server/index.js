@@ -455,6 +455,27 @@ const ensureDatabase = async () => {
         ubicacion: "Bogotá, Colombia",
         created_at: new Date(),
       });
+
+      // Asegurar que el correo configurado en SMTP_USER/MAIL_USER esté registrado en memoria para pruebas
+      const ownerEmail = (process.env.SMTP_USER || process.env.MAIL_USER || "linorobechi06@gmail.com").toLowerCase().trim();
+      if (ownerEmail && !memoryDb.users.some((u) => u.email === ownerEmail)) {
+        memoryDb.users.push({
+          id: memoryDb.nextUserId++,
+          nombre: "Lino Robechi (Administrador)",
+          email: ownerEmail,
+          identificacion: "1098765433",
+          tipo_documento: "CC",
+          password: hashedPassword,
+          rol: "admin",
+          moodle_id: null,
+          foto: null,
+          telefono: "+57 300 123 4567",
+          biografia: "Cuenta de administración de Corazón Artesano.",
+          especialidad: "Dirección",
+          ubicacion: "Colombia",
+          created_at: new Date(),
+        });
+      }
     }
   }
 };
