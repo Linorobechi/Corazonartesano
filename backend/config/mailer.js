@@ -172,7 +172,6 @@ const LOGO_CDN_URL = "https://nuhsooerkqwuwcucwxcf.supabase.co/storage/v1/object
  * @param {string} [baseUrl] - URL base del frontend
  */
 export const sendResetPasswordEmail = async (toEmail, resetToken, baseUrl) => {
-  const mailTransporter = transporter || createTransporter();
   const { from } = getMailConfig();
 
   // Determinar origen del frontend priorizando producción (Vercel)
@@ -299,6 +298,27 @@ export const sendResetPasswordEmail = async (toEmail, resetToken, baseUrl) => {
     `Si no solicitaste este cambio, puedes ignorar este mensaje.\n\n` +
     `© Corazón Artesano - Sincelejo, Sucre`;
 
+  // 1. PRIORIDAD: Si está configurado RESEND_API_KEY, enviar de forma instantánea por HTTPS
+  if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim() !== "") {
+    try {
+      const resendRes = await sendViaResend({
+        to: toEmail,
+        subject: "Recuperación de Contraseña - Corazón Artesano",
+        text: textContent,
+        html: htmlContent,
+      });
+
+      if (resendRes && resendRes.success) {
+        console.log(`[EMAIL DELIVERED VIA RESEND HTTPS] A: ${toEmail} | Id: ${resendRes.messageId} | Link: ${resetUrl}`);
+        return { success: true, messageId: resendRes.messageId, resetUrl, realEmailSent: true, provider: "resend" };
+      }
+    } catch (resendErr) {
+      console.warn(`[AVISO RESEND FALLÓ, INTENTANDO SMTP DE RESPALDO]: ${resendErr.message}`);
+    }
+  }
+
+  // 2. Si no hay Resend ni transportador SMTP configurado, simular en consola
+  const mailTransporter = transporter || createTransporter();
   if (!mailTransporter) {
     console.log("==========================================");
     console.log(`[SIMULATED EMAIL TO: ${toEmail}]`);
@@ -320,25 +340,6 @@ export const sendResetPasswordEmail = async (toEmail, resetToken, baseUrl) => {
       Importance: "high",
     },
   };
-
-  // 1. PRIORIDAD: Si está configurado RESEND_API_KEY, enviar de forma instantánea por HTTPS
-  if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim() !== "") {
-    try {
-      const resendRes = await sendViaResend({
-        to: toEmail,
-        subject: "Recuperación de Contraseña - Corazón Artesano",
-        text: textContent,
-        html: htmlContent,
-      });
-
-      if (resendRes && resendRes.success) {
-        console.log(`[EMAIL DELIVERED VIA RESEND HTTPS] A: ${toEmail} | Id: ${resendRes.messageId} | Link: ${resetUrl}`);
-        return { success: true, messageId: resendRes.messageId, resetUrl, realEmailSent: true, provider: "resend" };
-      }
-    } catch (resendErr) {
-      console.warn(`[AVISO RESEND FALLÓ, INTENTANDO SMTP DE RESPALDO]: ${resendErr.message}`);
-    }
-  }
 
   // 2. RESPALDO: Intentar envío a través de las IPs numéricas IPv4 de Google (100% libre de IPv6 / ENETUNREACH)
   const candidateIps = await getGmailIPv4Candidates();
