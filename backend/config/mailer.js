@@ -78,23 +78,27 @@ export const createTransporter = () => {
 export const transporter = createTransporter();
 
 /**
- * Envía el correo de recuperación de contraseña con plantilla visual artesanal
+ * Envía el correo de recuperación de contraseña con plantilla visual artesanal y logo oficial
  * @param {string} toEmail - Correo del destinatario
  * @param {string} resetToken - Token de seguridad generado
- * @param {string} [baseUrl] - URL base del frontend (ej: http://localhost:5173 o https://corazonartesano.vercel.app)
+ * @param {string} [baseUrl] - URL base del frontend
  */
 export const sendResetPasswordEmail = async (toEmail, resetToken, baseUrl) => {
   const mailTransporter = transporter || createTransporter();
   const { from } = getMailConfig();
 
-  // Determinar origen del frontend dinámicamente
-  let origin = baseUrl;
-  if (!origin) {
-    origin = process.env.FRONTEND_URL || "https://corazonartesano.vercel.app";
+  // Determinar origen del frontend priorizando producción (Vercel)
+  let origin = process.env.FRONTEND_URL || process.env.VERCEL_FRONTEND_URL || "https://corazonartesano.vercel.app";
+  if (!origin || origin.includes("localhost")) {
+    if (process.env.FRONTEND_URL && !process.env.FRONTEND_URL.includes("localhost")) {
+      origin = process.env.FRONTEND_URL;
+    } else {
+      origin = "https://corazonartesano.vercel.app";
+    }
   }
   const cleanOrigin = origin.replace(/\/$/, "");
 
-  // URL de restablecimiento (compatible con /restablecer-password y /reset-password)
+  // URL de restablecimiento en producción
   const resetUrl = `${cleanOrigin}/restablecer-password?token=${resetToken}`;
 
   const htmlContent = `
@@ -105,48 +109,61 @@ export const sendResetPasswordEmail = async (toEmail, resetToken, baseUrl) => {
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Recuperación de Contraseña - Corazón Artesano</title>
     </head>
-    <body style="margin: 0; padding: 0; background-color: #f4efe9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #2d2420;">
-      <table border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed; background-color: #f4efe9; padding: 30px 10px;">
+    <body style="margin: 0; padding: 0; background-color: #f7f4f0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #2d2420;">
+      <table border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed; background-color: #f7f4f0; padding: 35px 12px;">
         <tr>
           <td align="center">
             <!-- Contenedor Principal -->
-            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 580px; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px rgba(139, 94, 60, 0.08); border: 1px solid #e9e0d6;">
+            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 560px; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 8px 24px rgba(60, 40, 25, 0.08); border: 1px solid #e8ded4;">
               
-              <!-- Cabecera Artesanal -->
+              <!-- Cabecera Artesanal con Logo Oficial -->
               <tr>
-                <td align="center" style="background: linear-gradient(135deg, #8b5e3c 0%, #6e462b 100%); padding: 36px 20px; color: #ffffff;">
-                  <div style="font-size: 32px; line-height: 1; margin-bottom: 8px;">✨ 🧵 ✨</div>
-                  <h1 style="margin: 0; font-size: 26px; font-weight: 700; letter-spacing: 0.5px; color: #ffffff;">Corazón Artesano</h1>
-                  <p style="margin: 6px 0 0 0; font-size: 13px; color: #f2decb; letter-spacing: 1px; text-transform: uppercase;">Tradición, Pasión y Cultura Hecha a Mano</p>
+                <td align="center" style="background: linear-gradient(135deg, #7a4b2c 0%, #4a2e1b 100%); padding: 36px 24px; color: #ffffff;">
+                  <table border="0" cellpadding="0" cellspacing="0" align="center">
+                    <tr>
+                      <td align="center" style="padding-bottom: 12px;">
+                        <img src="cid:logo_corazon_artesano" alt="Corazón Artesano" width="80" height="80" style="display: block; width: 80px; height: 80px; object-fit: contain; border-radius: 18px; border: 2px solid rgba(255,255,255,0.25); background-color: rgba(255,255,255,0.1);" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td align="center">
+                        <h1 style="margin: 0; font-size: 26px; font-weight: 700; letter-spacing: 0.5px; color: #ffffff;">Corazón Artesano</h1>
+                        <p style="margin: 4px 0 0 0; font-size: 12px; color: #ebdcd0; letter-spacing: 1.5px; text-transform: uppercase;">Sincelejo, Sucre - Colombia</p>
+                      </td>
+                    </tr>
+                  </table>
                 </td>
               </tr>
 
               <!-- Cuerpo del Mensaje -->
               <tr>
                 <td style="padding: 36px 32px 28px 32px;">
-                  <h2 style="margin: 0 0 16px 0; font-size: 20px; color: #8b5e3c; font-weight: 600;">
-                    Recuperación de Contraseña
+                  <h2 style="margin: 0 0 16px 0; font-size: 20px; color: #7a4b2c; font-weight: 700;">
+                    Solicitud de Restablecimiento de Contraseña
                   </h2>
                   <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 1.6; color: #4a3e39;">
-                    Hola,
+                    Estimado usuario,
                   </p>
                   <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: #4a3e39;">
-                    Recibimos una solicitud para restablecer la contraseña de tu cuenta en <strong>Corazón Artesano</strong>. Para crear tu nueva contraseña, haz clic en el siguiente botón:
+                    Hemos recibido una solicitud para restablecer la contraseña de acceso a tu cuenta en la plataforma <strong>Corazón Artesano</strong>.
+                  </p>
+                  <p style="margin: 0 0 28px 0; font-size: 15px; line-height: 1.6; color: #4a3e39;">
+                    Para ingresar una nueva contraseña, haz clic en el siguiente enlace de seguridad:
                   </p>
 
                   <!-- Botón CTA -->
-                  <div style="text-align: center; margin: 32px 0;">
+                  <div style="text-align: center; margin: 30px 0;">
                     <a href="${resetUrl}" 
                        target="_blank"
-                       style="background-color: #8b5e3c; color: #ffffff; padding: 15px 34px; text-decoration: none; border-radius: 12px; font-size: 15px; font-weight: bold; display: inline-block; box-shadow: 0 4px 14px rgba(139, 94, 60, 0.35); transition: background-color 0.2s ease;">
-                      Restablecer mi Contraseña
+                       style="background-color: #8b5e3c; color: #ffffff; padding: 15px 36px; text-decoration: none; border-radius: 12px; font-size: 15px; font-weight: 700; display: inline-block; box-shadow: 0 4px 14px rgba(139, 94, 60, 0.35); text-transform: uppercase; letter-spacing: 0.5px;">
+                      Restablecer Contraseña
                     </a>
                   </div>
 
                   <!-- Enlace Alternativo de respaldo -->
-                  <div style="background-color: #fbf8f5; border: 1px solid #ebdcd0; border-radius: 10px; padding: 16px; margin: 24px 0 16px 0;">
+                  <div style="background-color: #fbf8f5; border: 1px solid #ebdcd0; border-radius: 12px; padding: 16px; margin: 28px 0 20px 0;">
                     <p style="margin: 0 0 8px 0; font-size: 12px; color: #736259; font-weight: 600;">
-                      ¿No funciona el botón? Copia y pega este enlace en tu navegador:
+                      Si tienes problemas con el botón, copia y pega este enlace directo en tu navegador:
                     </p>
                     <p style="margin: 0; font-size: 12px; word-break: break-all; color: #8b5e3c;">
                       <a href="${resetUrl}" style="color: #8b5e3c; text-decoration: underline;">${resetUrl}</a>
@@ -154,23 +171,25 @@ export const sendResetPasswordEmail = async (toEmail, resetToken, baseUrl) => {
                   </div>
 
                   <!-- Avisos de Seguridad -->
-                  <p style="margin: 20px 0 6px 0; font-size: 13px; color: #8c7b72; line-height: 1.5;">
-                    ⏱️ Este enlace de seguridad es válido por <strong>1 hora</strong>.
-                  </p>
-                  <p style="margin: 0; font-size: 13px; color: #8c7b72; line-height: 1.5;">
-                    🔒 Si no solicitaste este cambio, puedes ignorar este correo; tu cuenta seguirá segura.
-                  </p>
+                  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-top: 1px solid #f0e6dc; margin-top: 24px; padding-top: 18px;">
+                    <tr>
+                      <td style="font-size: 12px; color: #8c7b72; line-height: 1.6;">
+                        • Este enlace de seguridad tiene una validez de <strong>1 hora</strong> a partir de su emisión.<br>
+                        • Si no realizaste esta solicitud, puedes desestimar este mensaje; tu cuenta permanece protegida.
+                      </td>
+                    </tr>
+                  </table>
                 </td>
               </tr>
 
               <!-- Pie de Página -->
               <tr>
                 <td style="background-color: #f7f3ee; padding: 22px 30px; text-align: center; border-top: 1px solid #ebe2d8;">
-                  <p style="margin: 0; font-size: 12px; color: #8a7a72;">
-                    © ${new Date().getFullYear()} Corazón Artesano • Hecho con amor artesanal.
+                  <p style="margin: 0; font-size: 12px; font-weight: 600; color: #6e5445;">
+                    © ${new Date().getFullYear()} Corazón Artesano. Todos los derechos reservados.
                   </p>
-                  <p style="margin: 6px 0 0 0; font-size: 11px; color: #ab9c94;">
-                    Este es un correo automático, por favor no respondas directamente a este mensaje.
+                  <p style="margin: 4px 0 0 0; font-size: 11px; color: #9c8b82;">
+                    Plataforma de comercio electrónico y capacitación para artesanos de Sincelejo, Sucre.
                   </p>
                 </td>
               </tr>
@@ -184,13 +203,13 @@ export const sendResetPasswordEmail = async (toEmail, resetToken, baseUrl) => {
   `;
 
   const textContent = `Corazón Artesano - Recuperación de Contraseña\n\n` +
-    `Hola,\n\n` +
-    `Recibimos una solicitud para restablecer la contraseña de tu cuenta en Corazón Artesano.\n\n` +
+    `Estimado usuario,\n\n` +
+    `Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en Corazón Artesano.\n\n` +
     `Para crear una nueva contraseña, ingresa al siguiente enlace:\n` +
     `${resetUrl}\n\n` +
     `Este enlace es válido por 1 hora.\n` +
     `Si no solicitaste este cambio, puedes ignorar este mensaje.\n\n` +
-    `© Corazón Artesano`;
+    `© Corazón Artesano - Sincelejo, Sucre`;
 
   if (!mailTransporter) {
     console.log("==========================================");
@@ -200,12 +219,21 @@ export const sendResetPasswordEmail = async (toEmail, resetToken, baseUrl) => {
     return { success: true, simulated: true, resetUrl };
   }
 
+  const logoPath = path.resolve(__dirname, "../assets/logo.jpeg");
+
   const mailOptions = {
     from,
     to: toEmail,
     subject: "Recuperación de Contraseña - Corazón Artesano",
     text: textContent,
     html: htmlContent,
+    attachments: [
+      {
+        filename: "logo.jpeg",
+        path: logoPath,
+        cid: "logo_corazon_artesano",
+      },
+    ],
   };
 
   try {
