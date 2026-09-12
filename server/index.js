@@ -10,6 +10,7 @@ import path from "path";
 import axios from "axios";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
+import { sendResetPasswordEmail, createTransporter as createMailTransporter } from "./config/mailer.js";
 
 const app = express();
 app.use(cors());
@@ -460,28 +461,7 @@ const ensureDatabase = async () => {
 
 // ENVÍO DE NOTIFICACIONES Y CORREOS ELECTRÓNICOS REALES CON NODEMAILER (RF-03, RF-10)
 const createTransporter = () => {
-  const host = process.env.SMTP_HOST || process.env.EMAIL_HOST;
-  const port = Number(process.env.SMTP_PORT || process.env.EMAIL_PORT || 587);
-  const user = process.env.SMTP_USER || process.env.EMAIL_USER || process.env.GMAIL_USER;
-  const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS || process.env.GMAIL_APP_PASSWORD;
-
-  if (user && pass) {
-    if (host) {
-      return nodemailer.createTransport({
-        host,
-        port,
-        secure: port === 465,
-        auth: { user, pass },
-      });
-    } else {
-      // Servicio Gmail predeterminado si se proveen credenciales de usuario y clave de aplicación
-      return nodemailer.createTransport({
-        service: "gmail",
-        auth: { user, pass },
-      });
-    }
-  }
-  return null;
+  return createMailTransporter();
 };
 
 const sendEmailNotification = async ({ to, subject, html, text }) => {
@@ -1338,26 +1318,29 @@ app.post("/api/forgot-password", async (req, res) => {
       });
     }
 
-    // Determinar el origen del frontend (Vercel o local) para construir la URL correcta
-    const frontendOrigin =
-      process.env.FRONTEND_URL ||
+    // Determinar el origen del frontend dinámicamente (Localhost o Vercel)
+    // 1. Origen explícito en el body de la petición (enviado por el cliente desde window.location.origin)
+    // 2. Cabeceras estándar Origin o Referer
+    // 3. Variables de entorno FRONTEND_URL / VERCEL_FRONTEND_URL o fallback a Vercel
+    const clientOrigin =
+      req.body.origin ||
+      req.body.frontendUrl ||
       req.headers.origin ||
-      (req.headers.referer ? req.headers.referer.replace(/\/$/, "") : null) ||
-      "https://corazonartesano.vercel.app";
+      (req.headers.referer ? new URL(req.headers.referer).origin : null);
 
-    const resetUrl = `${frontendOrigin}/restablecer-password?token=${token}`;
+    let frontendOrigin = clientOrigin || process.env.FRONTEND_URL || process.env.VERCEL_FRONTEND_URL || "https://corazonartesano.vercel.app";
+    frontendOrigin = frontendOrigin.replace(/\/$/, "");
 
-    await sendEmailNotification({
-      to: normalizedEmail,
-      subject: "Recuperación de Contraseña - Corazón Artesano",
-      html: `<p>Hola,</p><p>Has solicitado restablecer tu contraseña en Corazón Artesano. Haz clic en el siguiente enlace para continuar:</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>Este enlace caducará en 1 hora.</p>`,
-      text: `Has solicitado restablecer tu contraseña en Corazón Artesano. Haz clic en la siguiente URL: ${resetUrl}`,
-    });
+    // Enviar el correo usando mailer.js con plantilla artesanal
+    const mailResult = await sendResetPasswordEmail(normalizedEmail, token, frontendOrigin);
 
     return res.json({
-      message: "Hemos verificado tu correo. Te enviamos las instrucciones de recuperación.",
+      success: true,
+      message: "Hemos verificado tu correo. Te enviamos las instrucciones de recuperación a tu bandeja de entrada.",
+      email: normalizedEmail,
+      realEmailSent: Boolean(mailResult.realEmailSent),
+      resetUrl: mailResult.resetUrl,
       tokenPreview: token,
-      resetUrl,
     });
   } catch (error) {
     console.error("Error en forgot-password:", error);

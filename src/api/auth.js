@@ -11,19 +11,37 @@ const parseResponse = async (response) => {
 };
 
 const safeFetch = async (endpoint, options = {}) => {
-  let url = API_URL ? `${API_URL}${endpoint}` : endpoint;
+  const isLocal =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+
+  let primaryUrl = endpoint;
+  let fallbackUrl = null;
+
+  if (isLocal) {
+    // En entorno de desarrollo local, usar el proxy de Vite (/api) primero
+    primaryUrl = endpoint;
+    fallbackUrl = API_URL ? `${API_URL}${endpoint}` : null;
+  } else {
+    // En producción (Vercel), usar el backend configurado en API_URL
+    primaryUrl = API_URL ? `${API_URL}${endpoint}` : endpoint;
+    fallbackUrl = API_URL ? endpoint : null;
+  }
+
   let response;
   try {
-    response = await fetch(url, options);
-    if (!response.ok && API_URL && url !== endpoint) {
-      const localResponse = await fetch(endpoint, options);
-      if (localResponse.ok) {
-        response = localResponse;
+    response = await fetch(primaryUrl, options);
+    if (!response.ok && fallbackUrl && response.status >= 500) {
+      try {
+        const altResponse = await fetch(fallbackUrl, options);
+        if (altResponse.ok) return altResponse;
+      } catch {
+        // Ignorar error de red secundario
       }
     }
   } catch (err) {
-    if (url !== endpoint) {
-      response = await fetch(endpoint, options);
+    if (fallbackUrl) {
+      response = await fetch(fallbackUrl, options);
     } else {
       throw err;
     }
@@ -55,13 +73,17 @@ export const loginUser = async (payload) => {
   return parseResponse(response);
 };
 
-export const forgotPassword = async (email) => {
+export const forgotPassword = async (email, origin) => {
+  const clientOrigin =
+    origin ||
+    (typeof window !== "undefined" && window.location ? window.location.origin : undefined);
+
   const response = await safeFetch("/api/forgot-password", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ email, origin: clientOrigin }),
   });
 
   return parseResponse(response);

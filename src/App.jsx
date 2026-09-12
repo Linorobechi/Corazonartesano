@@ -51,7 +51,11 @@ function App() {
             <Route path="/registro" element={<Register />} />
             <Route path="/registrarse" element={<Register />} />
             <Route path="/recuperar-password" element={<RecuperarPassword />} />
+            <Route path="/forgot-password" element={<RecuperarPassword />} />
+            <Route path="/recuperar" element={<RecuperarPassword />} />
             <Route path="/restablecer-password" element={<RestablecerPassword />} />
+            <Route path="/reset-password" element={<RestablecerPassword />} />
+            <Route path="/restablecer" element={<RestablecerPassword />} />
           </Route>
 
           {/* Rutas protegidas genéricas */}
