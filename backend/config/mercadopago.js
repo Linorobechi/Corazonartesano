@@ -2,16 +2,16 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 
+import crypto from "node:crypto";
+
 process.env.DOTENV_CONFIG_QUIET = "true";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, "../.env"), quiet: true });
 dotenv.config({ quiet: true });
 
-export const MERCADOPAGO_PUBLIC_KEY =
-  process.env.MERCADOPAGO_PUBLIC_KEY || "TEST-0d7b8cc8-39e1-4039-bbb0-0fe431aa861c";
-
-export const MERCADOPAGO_ACCESS_TOKEN =
-  process.env.MERCADOPAGO_ACCESS_TOKEN || "TEST-1854463994404337-091211-0d4fba83e2420079cfa409d20c885635-690425755";
+// Credenciales tomadas estrictamente de variables de entorno (.env local o Render)
+export const MERCADOPAGO_PUBLIC_KEY = (process.env.MERCADOPAGO_PUBLIC_KEY || "").trim();
+export const MERCADOPAGO_ACCESS_TOKEN = (process.env.MERCADOPAGO_ACCESS_TOKEN || "").trim();
 
 const MP_API_BASE = "https://api.mercadopago.com";
 
@@ -108,9 +108,75 @@ export const getMercadoPagoPayment = async (paymentId) => {
   return data;
 };
 
+/**
+ * Crear un pago directo en Mercado Pago (Checkout API / POST /v1/payments)
+ * Implementa X-Idempotency-Key para evitar cobros duplicados
+ */
+export const createMercadoPagoPayment = async ({
+  token,
+  transactionAmount,
+  paymentMethodId,
+  installments = 1,
+  payer,
+  description,
+  externalReference,
+  notificationUrl,
+  additionalInfo,
+}) => {
+  if (!MERCADOPAGO_ACCESS_TOKEN) {
+    throw new Error("MERCADOPAGO_ACCESS_TOKEN no está configurado en las variables de entorno");
+  }
+
+  const idempotencyKey = crypto.randomUUID();
+
+  const body = {
+    transaction_amount: Number(transactionAmount),
+    token,
+    description: description || "Compra en Corazón Artesano",
+    payment_method_id: paymentMethodId,
+    installments: Number(installments) || 1,
+    payer: {
+      email: payer?.email,
+      first_name: payer?.first_name || payer?.name,
+      last_name: payer?.last_name,
+      identification: payer?.identification,
+    },
+    external_reference: externalReference ? String(externalReference) : undefined,
+  };
+
+  if (notificationUrl && notificationUrl.startsWith("https://")) {
+    body.notification_url = notificationUrl;
+  }
+
+  if (additionalInfo) {
+    body.additional_info = additionalInfo;
+  }
+
+  const response = await fetch(`${MP_API_BASE}/v1/payments`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${MERCADOPAGO_ACCESS_TOKEN}`,
+      "Content-Type": "application/json",
+      "X-Idempotency-Key": idempotencyKey,
+    },
+    body: JSON.stringify(body),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    console.error("❌ [MERCADO PAGO /v1/payments ERROR]:", data);
+    const detail = data.cause?.[0]?.description || data.message || "Error al procesar el pago";
+    throw new Error(detail);
+  }
+
+  return data;
+};
+
 export default {
   MERCADOPAGO_PUBLIC_KEY,
   MERCADOPAGO_ACCESS_TOKEN,
   createMercadoPagoPreference,
+  createMercadoPagoPayment,
   getMercadoPagoPayment,
 };
