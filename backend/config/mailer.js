@@ -13,64 +13,78 @@ dotenv.config({ path: path.resolve(__dirname, "../.env") });
 dotenv.config();
 
 /**
- * Obtiene la configuración del transportador soportando variables MAIL_*, SMTP_* y EMAIL_*
+ * Obtiene la configuración del transportador priorizando variables EMAIL_*
  */
 export const getMailConfig = () => {
   const host =
-    process.env.MAIL_HOST ||
-    process.env.SMTP_HOST ||
     process.env.EMAIL_HOST ||
+    process.env.SMTP_HOST ||
+    process.env.MAIL_HOST ||
     "smtp.gmail.com";
 
   const port = Number(
-    process.env.MAIL_PORT ||
-    process.env.SMTP_PORT ||
     process.env.EMAIL_PORT ||
+    process.env.SMTP_PORT ||
+    process.env.MAIL_PORT ||
     465
   );
 
   const secure =
-    process.env.MAIL_SECURE === "true" ||
+    process.env.EMAIL_SECURE === "true" ||
     process.env.SMTP_SECURE === "true" ||
+    process.env.MAIL_SECURE === "true" ||
     port === 465;
 
   const user =
-    process.env.MAIL_USER ||
-    process.env.SMTP_USER ||
     process.env.EMAIL_USER ||
+    process.env.SMTP_USER ||
+    process.env.MAIL_USER ||
     process.env.GMAIL_USER;
 
   const pass =
-    process.env.MAIL_PASS ||
-    process.env.SMTP_PASS ||
     process.env.EMAIL_PASS ||
+    process.env.SMTP_PASS ||
+    process.env.MAIL_PASS ||
     process.env.GMAIL_APP_PASSWORD;
 
   const from =
-    process.env.MAIL_FROM ||
-    process.env.SMTP_FROM ||
     process.env.EMAIL_FROM ||
+    process.env.SMTP_FROM ||
+    process.env.MAIL_FROM ||
     (user ? `"Corazón Artesano" <${user}>` : '"Corazón Artesano" <no-reply@corazonartesano.com>');
 
   return { host, port, secure, user, pass, from };
 };
 
 /**
- * Crea o reutiliza el transportador de Nodemailer optimizado
+ * Crea o reutiliza el transportador de Nodemailer optimizado para Render y Producción
  */
 export const createTransporter = () => {
   const { host, port, secure, user, pass } = getMailConfig();
 
   if (!user || !pass) {
-    console.warn("⚠️ [MAILER] Faltan credenciales de correo (MAIL_USER / MAIL_PASS o SMTP_USER / SMTP_PASS).");
+    console.warn("⚠️ [MAILER] Faltan credenciales de correo (EMAIL_USER / EMAIL_PASS).");
     return null;
+  }
+
+  const isGmail = (host || "").includes("gmail") || (user || "").endsWith("@gmail.com");
+
+  // Para Gmail en Render (Linux), service: 'gmail' fuerza IPv4 y previene el error ENETUNREACH de IPv6
+  if (isGmail) {
+    return nodemailer.createTransport({
+      service: "gmail",
+      auth: { user, pass },
+      tls: {
+        rejectUnauthorized: false,
+      },
+    });
   }
 
   return nodemailer.createTransport({
     host: host || "smtp.gmail.com",
     port: port || 465,
     secure: secure !== undefined ? secure : true,
-    family: 4, // Fuerza IPv4 directo (elimina la espera de 25s de IPv6)
+    family: 4, // Fuerza IPv4 directo
     auth: { user, pass },
     tls: {
       rejectUnauthorized: false,
