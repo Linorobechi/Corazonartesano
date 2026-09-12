@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Footer from "../Components/Footer";
+import { getMoodleCourses, enrollMoodleCourse } from "../api/moodle.js";
 import {
   FaGraduationCap,
   FaBookOpen,
@@ -27,8 +28,7 @@ export default function Capacitaciones() {
 
   useEffect(() => {
     let ignore = false;
-    fetch("/api/cursos")
-      .then((res) => res.json())
+    getMoodleCourses()
       .then((data) => {
         if (!ignore) {
           const rawCourses = Array.isArray(data) ? data : [];
@@ -57,23 +57,12 @@ export default function Capacitaciones() {
     setNotification("");
 
     try {
-      const token = localStorage.getItem("auth_token");
-      const response = await fetch("/api/moodle/enroll", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ courseId }),
-      });
-
-      if (response.ok) {
-        setNotification(`Inscripción exitosa en el curso. Se envió un correo con los accesos.`);
-        // Mark course enrolled in UI state
-        setCourses((prev) =>
-          prev.map((c) => (c.id === courseId ? { ...c, enrolled: true } : c))
-        );
-      }
+      await enrollMoodleCourse(courseId);
+      setNotification(`Inscripción exitosa en el curso. Se envió un correo con los accesos.`);
+      // Mark course enrolled in UI state
+      setCourses((prev) =>
+        prev.map((c) => (c.id === courseId ? { ...c, enrolled: true } : c))
+      );
     } catch {
       setNotification("Error al procesar la inscripción.");
     } finally {
