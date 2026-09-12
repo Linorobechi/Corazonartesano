@@ -10,7 +10,6 @@ import path from "path";
 import axios from "axios";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
-import { sendResetPasswordEmail, createTransporter as createMailTransporter } from "./config/mailer.js";
 
 const app = express();
 app.use(cors());
@@ -480,9 +479,98 @@ const ensureDatabase = async () => {
   }
 };
 
-// ENVÍO DE NOTIFICACIONES Y CORREOS ELECTRÓNICOS REALES CON NODEMAILER (RF-03, RF-10)
+// ENVÍO DE NOTIFICACIONES Y CORREOS ELECTRÓNICOS REALES CON NODEMAILER DIRECTO (SMTP)
 const createTransporter = () => {
-  return createMailTransporter();
+  const host = process.env.SMTP_HOST || process.env.MAIL_HOST || "smtp.gmail.com";
+  const port = Number(process.env.SMTP_PORT || process.env.MAIL_PORT || 465);
+  const secure = process.env.SMTP_SECURE === "true" || process.env.MAIL_SECURE === "true" || port === 465;
+  const user = process.env.SMTP_USER || process.env.MAIL_USER || process.env.EMAIL_USER;
+  const pass = process.env.SMTP_PASS || process.env.MAIL_PASS || process.env.EMAIL_PASS;
+
+  if (user && pass) {
+    return nodemailer.createTransport({
+      host,
+      port,
+      secure,
+      auth: { user, pass },
+      tls: {
+        rejectUnauthorized: false,
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+    });
+  }
+  return null;
+};
+
+const sendPasswordResetEmailSMTP = async ({ to, resetUrl }) => {
+  const transporter = createTransporter();
+  const fromUser =
+    process.env.SMTP_FROM ||
+    process.env.MAIL_FROM ||
+    (process.env.SMTP_USER ? `"Corazón Artesano" <${process.env.SMTP_USER}>` : '"Corazón Artesano" <linorobechi06@gmail.com>');
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="es">
+    <head><meta charset="UTF-8"></head>
+    <body style="margin: 0; padding: 20px; background-color: #f5f1ec; font-family: 'Segoe UI', Tahoma, sans-serif; color: #2d2420;">
+      <div style="max-width: 560px; margin: auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e8ded4; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+        <div style="background-color: #8b5e3c; padding: 28px 20px; text-align: center; color: #ffffff;">
+          <h1 style="margin: 0; font-size: 24px; font-weight: bold;">Corazón Artesano</h1>
+          <p style="margin: 6px 0 0 0; font-size: 13px; color: #f5e4d5;">Recuperación de Contraseña</p>
+        </div>
+        <div style="padding: 30px 25px;">
+          <p style="font-size: 15px; margin: 0 0 14px 0;">Hola,</p>
+          <p style="font-size: 15px; line-height: 1.5; color: #4a3e39; margin: 0 0 24px 0;">
+            Recibimos una solicitud para restablecer tu contraseña. Haz clic en el botón de abajo para ingresar una nueva:
+          </p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetUrl}" 
+               style="background-color: #8b5e3c; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 15px; display: inline-block;">
+              Restablecer Contraseña
+            </a>
+          </div>
+          <div style="background-color: #faf7f4; border: 1px solid #ebdcd0; border-radius: 8px; padding: 12px; margin: 20px 0;">
+            <p style="margin: 0 0 6px 0; font-size: 12px; color: #6e5f57; font-weight: bold;">¿No funciona el botón? Copia este enlace:</p>
+            <p style="margin: 0; font-size: 11px; word-break: break-all; color: #8b5e3c;"><a href="${resetUrl}" style="color: #8b5e3c;">${resetUrl}</a></p>
+          </div>
+          <p style="font-size: 12px; color: #887a71; margin: 16px 0 0 0;">⏱️ Este enlace expira en 1 hora por seguridad. Si no solicitaste este cambio, puedes ignorar este correo.</p>
+        </div>
+        <div style="background-color: #f7f3ee; padding: 16px 20px; text-align: center; border-top: 1px solid #eee5dc;">
+          <p style="margin: 0; font-size: 11px; color: #9c8e85;">© Corazón Artesano • Hecho con amor artesanal.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const text = `Corazón Artesano - Recuperación de Contraseña\n\nIngresa al siguiente enlace para restablecer tu contraseña:\n${resetUrl}\n\nVálido por 1 hora.\n© Corazón Artesano`;
+
+  if (transporter) {
+    try {
+      const info = await transporter.sendMail({
+        from: fromUser,
+        to,
+        subject: "Recuperación de Contraseña - Corazón Artesano",
+        text,
+        html,
+      });
+      console.log(`[SMTP EMAIL SENT TO: ${to}] Id: ${info.messageId} | Link: ${resetUrl}`);
+      return { success: true, messageId: info.messageId, realEmailSent: true, resetUrl };
+    } catch (err) {
+      console.error(`[SMTP ERROR ENVIANDO A ${to}]:`, err.message);
+      return { success: false, error: err.message, realEmailSent: false, resetUrl };
+    }
+  }
+
+  // Fallback simulador en consola si no hay credenciales SMTP
+  console.log("==========================================");
+  console.log(`[SIMULATED SMTP PASSWORD RESET TO: ${to}]`);
+  console.log(`URL: ${resetUrl}`);
+  console.log("==========================================");
+  return { success: true, realEmailSent: false, simulated: true, resetUrl };
 };
 
 const sendEmailNotification = async ({ to, subject, html, text }) => {
@@ -1352,15 +1440,17 @@ app.post("/api/forgot-password", async (req, res) => {
     let frontendOrigin = clientOrigin || process.env.FRONTEND_URL || process.env.VERCEL_FRONTEND_URL || "https://corazonartesano.vercel.app";
     frontendOrigin = frontendOrigin.replace(/\/$/, "");
 
-    // Enviar el correo usando mailer.js con plantilla artesanal
-    const mailResult = await sendResetPasswordEmail(normalizedEmail, token, frontendOrigin);
+    const resetUrl = `${frontendOrigin}/restablecer-password?token=${token}`;
+
+    // Enviar el correo usando SMTP directo
+    const mailResult = await sendPasswordResetEmailSMTP({ to: normalizedEmail, resetUrl });
 
     return res.json({
       success: true,
       message: "Hemos verificado tu correo. Te enviamos las instrucciones de recuperación a tu bandeja de entrada.",
       email: normalizedEmail,
       realEmailSent: Boolean(mailResult.realEmailSent),
-      resetUrl: mailResult.resetUrl,
+      resetUrl,
       tokenPreview: token,
     });
   } catch (error) {
