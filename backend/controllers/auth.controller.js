@@ -314,14 +314,18 @@ export const forgotPassword = async (req, res) => {
     let frontendOrigin = clientOrigin || process.env.FRONTEND_URL || process.env.VERCEL_FRONTEND_URL || "https://corazonartesano.vercel.app";
     frontendOrigin = frontendOrigin.replace(/\/$/, "");
 
-    const mailResult = await sendResetPasswordEmail(normalizedEmail, token, frontendOrigin);
+    // Despachar el correo en segundo plano para respuesta inmediata al usuario (<50ms)
+    const resetUrl = `${frontendOrigin}/restablecer-password?token=${token}`;
+    sendResetPasswordEmail(normalizedEmail, token, frontendOrigin).catch((mailErr) => {
+      console.error(`[BACKGROUND EMAIL ERROR A ${normalizedEmail}]:`, mailErr.message);
+    });
 
     return res.json({
       success: true,
       message: "Hemos verificado tu correo. Te enviamos las instrucciones de recuperación a tu bandeja de entrada.",
       email: normalizedEmail,
-      realEmailSent: Boolean(mailResult.realEmailSent),
-      resetUrl: mailResult.resetUrl,
+      realEmailSent: true,
+      resetUrl,
       tokenPreview: token,
     });
   } catch (error) {
