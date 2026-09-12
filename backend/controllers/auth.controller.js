@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { pool, isUsingMemoryDb, memoryDb, JWT_SECRET } from "../config/db.js";
 import { buildUserResponse } from "../utils/formatters.js";
 import { uploadFileToStorage } from "../utils/storage.js";
+import { sendPasswordResetEmail } from "../config/mailer.js";
 
 /**
  * Registro de un nuevo usuario
@@ -270,26 +271,26 @@ export const updateProfile = async (req, res) => {
  */
 export const forgotPassword = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, origin } = req.body;
     if (!email) return res.status(400).json({ message: "El correo es obligatorio" });
 
     const normalizedEmail = email.toLowerCase().trim();
     const token = crypto.randomBytes(24).toString("hex");
     const expiresAt = new Date(Date.now() + 3600000); // 1 hora de validez
 
-    let userFound = false;
+    let userFound = null;
 
     if (isUsingMemoryDb) {
       const user = memoryDb.users.find((u) => u.email === normalizedEmail);
       if (user) {
-        userFound = true;
+        userFound = user;
         memoryDb.password_resets = memoryDb.password_resets.filter((r) => r.email !== normalizedEmail);
         memoryDb.password_resets.push({ email: normalizedEmail, token, expiresAt });
       }
     } else {
-      const rows = await pool.query("SELECT id FROM users WHERE email = $1 LIMIT 1", [normalizedEmail]);
+      const rows = await pool.query("SELECT id, nombre, email FROM users WHERE email = $1 LIMIT 1", [normalizedEmail]);
       if (rows.rows && rows.rows.length > 0) {
-        userFound = true;
+        userFound = rows.rows[0];
         await pool.query("DELETE FROM password_resets WHERE email = $1", [normalizedEmail]);
         await pool.query(
           "INSERT INTO password_resets (email, token, expires_at) VALUES ($1, $2, $3)",
@@ -304,12 +305,22 @@ export const forgotPassword = async (req, res) => {
       });
     }
 
+    // Determinar la URL base del frontend
+    const clientOrigin = origin || process.env.FRONTEND_URL || "http://localhost:5173";
+    const originClean = clientOrigin.replace(/\/+$/, "");
+    const resetUrl = `${originClean}/restablecer-password?token=${token}&email=${encodeURIComponent(normalizedEmail)}`;
+
+    // Despachar el correo electrónico
+    await sendPasswordResetEmail({
+      to: normalizedEmail,
+      resetUrl,
+      userName: userFound.nombre || "Usuario",
+    });
+
     return res.json({
       success: true,
-      message: "Cuenta verificada con éxito. Procede a ingresar tu nueva contraseña.",
+      message: "Hemos enviado un enlace de recuperación a tu correo electrónico. Por favor revisa tu bandeja de entrada.",
       email: normalizedEmail,
-      token,
-      resetUrl: `/restablecer-password?token=${token}`,
     });
   } catch (error) {
     console.error("Error en forgot-password:", error);
@@ -346,7 +357,10 @@ export const resetPassword = async (req, res) => {
       }
 
       memoryDb.password_resets.splice(resetIndex, 1);
-      return res.json({ message: "Contraseña restablecida con éxito. Ya puedes iniciar sesión." });
+      return res.json({
+        success: true,
+        message: "Tu contraseña ha sido actualizada con éxito. Ya puedes iniciar sesión.",
+      });
     }
 
     const rows = await pool.query(
@@ -362,9 +376,13 @@ export const resetPassword = async (req, res) => {
     await pool.query("UPDATE users SET password = $1 WHERE email = $2", [hashedPassword, resetRecord.email]);
     await pool.query("DELETE FROM password_resets WHERE email = $1", [resetRecord.email]);
 
-    return res.json({ message: "Contraseña restablecida con éxito. Ya puedes iniciar sesión." });
+    return res.json({
+      success: true,
+      message: "Tu contraseña ha sido actualizada con éxito. Ya puedes iniciar sesión.",
+    });
   } catch (error) {
     console.error("Error en reset-password:", error);
     return res.status(500).json({ message: "Error al restablecer la contraseña" });
   }
 };
+

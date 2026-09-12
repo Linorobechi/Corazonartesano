@@ -4,54 +4,55 @@ import { motion, AnimatePresence } from "framer-motion";
 import Footer from "../Components/Footer";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import {
-  FaCheckCircle,
-  FaExclamationTriangle,
-  FaEye,
-  FaEyeSlash,
-  FaArrowRight,
-  FaSpinner,
-  FaShieldAlt,
-} from "react-icons/fa";
+  Lock,
+  Eye,
+  EyeOff,
+  CheckCircle2,
+  AlertTriangle,
+  AlertCircle,
+  Loader2,
+  ArrowLeft,
+  Mail,
+} from "lucide-react";
 import { resetPassword } from "../api/auth";
 
 export default function RestablecerPassword() {
   const [searchParams] = useSearchParams();
   const tokenFromUrl = (searchParams.get("token") || "").trim();
+  const emailFromUrl = (searchParams.get("email") || "").trim();
   const navigate = useNavigate();
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [message, setMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState("");
-  const [countdown, setCountdown] = useState(3);
+  const [countdown, setCountdown] = useState(4);
 
   const isLongEnough = password.length >= 6;
   const isMatching = password.length > 0 && password === confirmPassword;
 
-  // Manejo de la cuenta regresiva tras éxito
+  // Redirección suave con cuenta regresiva tras éxito
   useEffect(() => {
     let timer;
-    if (success && countdown > 0) {
+    if (isSuccess && countdown > 0) {
       timer = setInterval(() => {
         setCountdown((c) => c - 1);
       }, 1000);
-    } else if (success && countdown === 0) {
+    } else if (isSuccess && countdown === 0) {
       navigate("/login");
     }
     return () => clearInterval(timer);
-  }, [success, countdown, navigate]);
+  }, [isSuccess, countdown, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage("");
     setError("");
 
     if (!tokenFromUrl) {
-      setError("No se ha detectado el token de seguridad. Por favor solicita un nuevo enlace.");
+      setError("Falta el token de seguridad. Por favor solicita un nuevo enlace de recuperación.");
       return;
     }
 
@@ -70,16 +71,18 @@ export default function RestablecerPassword() {
       return;
     }
 
-    setLoading(true);
+    setIsLoading(true);
 
     try {
-      const data = await resetPassword(tokenFromUrl, password);
-      setMessage(data.message || "Tu contraseña ha sido restablecida con éxito.");
-      setSuccess(true);
+      await resetPassword(tokenFromUrl, password);
+      setIsSuccess(true);
     } catch (err) {
-      setError(err.message || "El enlace no es válido o ha expirado. Solicita un nuevo correo.");
+      console.error("Error al restablecer contraseña:", err);
+      setError(
+        err.message || "El enlace no es válido o ha expirado. Por favor solicita un nuevo correo."
+      );
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -87,40 +90,50 @@ export default function RestablecerPassword() {
     <>
       <section className="bg-[#f5f1ec] pt-28 pb-20 px-4 flex justify-center items-center min-h-[85vh]">
         <motion.div
-          initial={{ opacity: 0, y: 25 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, ease: "easeOut" }}
-          className="bg-white rounded-3xl shadow-xl p-6 sm:p-9 max-w-md w-full border border-[#eae0d5]"
+          className="bg-white rounded-3xl shadow-xl p-8 sm:p-10 max-w-md w-full border border-[#eae0d5]"
         >
+          {/* LOGO */}
+          <div className="flex justify-center mb-6">
+            <Link to="/" className="group">
+              <img
+                src={logoImg}
+                alt="Corazón Artesano"
+                className="w-16 h-16 object-contain rounded-2xl drop-shadow-md group-hover:scale-105 transition-transform"
+              />
+            </Link>
+          </div>
+
           <AnimatePresence mode="wait">
-            {!success ? (
+            {!isSuccess ? (
+              /* ESTADO 1: FORMULARIO DE RESTABLECIMIENTO */
               <motion.div
                 key="reset-form"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.25 }}
               >
-                <div className="text-center space-y-2 mb-6">
-                  <div className="flex justify-center mb-3">
-                    <img src={logoImg} alt="Corazón Artesano" className="w-14 h-14 object-contain rounded-2xl drop-shadow-md" />
-                  </div>
-                  <h2 className="text-2xl font-bold text-[#8b5e3c]">
+                <div className="text-center mb-6">
+                  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
                     Restablecer Contraseña
                   </h2>
-                  <p className="text-xs text-gray-600 leading-relaxed max-w-xs mx-auto">
-                    Crea una nueva contraseña segura para tu cuenta de <strong>Corazón Artesano</strong>.
+                  <p className="text-sm text-gray-500 leading-relaxed">
+                    Ingresa tu nueva contraseña para acceder a Corazón Artesano.
                   </p>
                 </div>
 
-                {/* ALERTA DE TOKEN AUSENTE */}
+                {/* ADVERTENCIA SI FALTA EL TOKEN */}
                 {!tokenFromUrl && (
                   <div className="mb-5 p-4 bg-amber-50 border border-amber-200 rounded-2xl text-amber-900 text-xs space-y-2">
                     <div className="flex items-start gap-2 font-semibold">
-                      <FaExclamationTriangle className="text-base flex-shrink-0 mt-0.5 text-amber-600" />
+                      <AlertTriangle size={16} className="shrink-0 mt-0.5 text-amber-600" />
                       <span>Falta el token de seguridad en la URL</span>
                     </div>
                     <p className="text-amber-800 text-[11px] leading-relaxed pl-6">
-                      Para restablecer tu contraseña necesitas ingresar desde el enlace que recibiste en tu correo electrónico.
+                      Para restablecer tu contraseña necesitas ingresar desde el enlace recibido en tu correo electrónico.
                     </p>
                     <div className="pl-6 pt-1">
                       <Link
@@ -134,124 +147,140 @@ export default function RestablecerPassword() {
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* CORREO DEL USUARIO (Solo lectura para feedback, si existe en la URL) */}
+                  {emailFromUrl && (
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-gray-700 ml-1 block">
+                        Para el usuario
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                          <Mail size={18} />
+                        </div>
+                        <input
+                          type="text"
+                          value={emailFromUrl}
+                          disabled
+                          className="block w-full pl-10 pr-4 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-xs font-semibold text-gray-600 cursor-not-allowed"
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   {/* NUEVA CONTRASEÑA */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-700 ml-1 block">
                       Nueva Contraseña
                     </label>
-                    <div className="relative">
+                    <div className="relative group">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400 group-focus-within:text-[#8b5e3c] transition-colors">
+                        <Lock size={18} />
+                      </div>
                       <input
                         type={showPassword ? "text" : "password"}
+                        placeholder="Mínimo 6 caracteres"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Mínimo 6 caracteres"
                         required
-                        disabled={!tokenFromUrl || loading}
-                        className="w-full pl-4 pr-11 py-3 rounded-xl bg-[#f7f4ef] text-sm text-gray-800 placeholder-gray-400 border border-[#e8dfd5] outline-none transition focus:border-[#8b5e3c] focus:ring-2 focus:ring-[#8b5e3c]/20 disabled:opacity-50"
+                        disabled={!tokenFromUrl || isLoading}
+                        className="block w-full pl-10 pr-11 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#8b5e3c]/20 focus:border-[#8b5e3c] transition-all duration-200 disabled:opacity-50"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         disabled={!tokenFromUrl}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#8b5e3c] transition p-1"
-                        title={showPassword ? "Ocultar" : "Mostrar"}
+                        className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-[#8b5e3c] transition cursor-pointer"
+                        title={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
                       >
-                        {showPassword ? <FaEyeSlash className="text-sm" /> : <FaEye className="text-sm" />}
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
                     </div>
                   </div>
 
                   {/* CONFIRMAR CONTRASEÑA */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                      Confirmar Nueva Contraseña
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-700 ml-1 block">
+                      Confirmar Contraseña
                     </label>
-                    <div className="relative">
+                    <div className="relative group">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400 group-focus-within:text-[#8b5e3c] transition-colors">
+                        <Lock size={18} />
+                      </div>
                       <input
                         type={showConfirmPassword ? "text" : "password"}
+                        placeholder="Repite tu nueva contraseña"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Repite tu nueva contraseña"
                         required
-                        disabled={!tokenFromUrl || loading}
-                        className="w-full pl-4 pr-11 py-3 rounded-xl bg-[#f7f4ef] text-sm text-gray-800 placeholder-gray-400 border border-[#e8dfd5] outline-none transition focus:border-[#8b5e3c] focus:ring-2 focus:ring-[#8b5e3c]/20 disabled:opacity-50"
+                        disabled={!tokenFromUrl || isLoading}
+                        className="block w-full pl-10 pr-11 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#8b5e3c]/20 focus:border-[#8b5e3c] transition-all duration-200 disabled:opacity-50"
                       />
                       <button
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                         disabled={!tokenFromUrl}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#8b5e3c] transition p-1"
-                        title={showConfirmPassword ? "Ocultar" : "Mostrar"}
+                        className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-[#8b5e3c] transition cursor-pointer"
+                        title={showConfirmPassword ? "Ocultar contraseña" : "Ver contraseña"}
                       >
-                        {showConfirmPassword ? <FaEyeSlash className="text-sm" /> : <FaEye className="text-sm" />}
+                        {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
                     </div>
                   </div>
 
-                  {/* INDICADORES DE VALIDACIÓN EN VIVO */}
+                  {/* INDICADORES EN VIVO DE VALIDACIÓN */}
                   {password.length > 0 && (
-                    <div className="p-3 bg-[#fcfaf7] border border-[#ebe1d5] rounded-xl space-y-1.5 text-[11px]">
+                    <div className="p-3 bg-amber-50/50 border border-amber-100 rounded-xl space-y-1.5 text-[11px]">
                       <div className="flex items-center gap-2">
                         <span
-                          className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] font-bold ${
-                            isLongEnough ? "bg-green-600 text-white" : "bg-gray-300 text-gray-600"
+                          className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                            isLongEnough ? "bg-emerald-600 text-white" : "bg-gray-300 text-gray-600"
                           }`}
                         >
                           ✓
                         </span>
-                        <span className={isLongEnough ? "text-green-800 font-medium" : "text-gray-500"}>
+                        <span className={isLongEnough ? "text-emerald-800 font-medium" : "text-gray-500"}>
                           Al menos 6 caracteres ({password.length}/6)
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span
-                          className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] font-bold ${
-                            isMatching ? "bg-green-600 text-white" : "bg-gray-300 text-gray-600"
+                          className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                            isMatching ? "bg-emerald-600 text-white" : "bg-gray-300 text-gray-600"
                           }`}
                         >
                           ✓
                         </span>
-                        <span className={isMatching ? "text-green-800 font-medium" : "text-gray-500"}>
+                        <span className={isMatching ? "text-emerald-800 font-medium" : "text-gray-500"}>
                           Las contraseñas coinciden
                         </span>
                       </div>
                     </div>
                   )}
 
-                  {/* MENSAJE DE ERROR */}
+                  {/* ALERTA DE ERROR */}
                   {error && (
-                    <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl space-y-1">
-                      <div className="flex items-start gap-2 font-medium">
-                        <FaExclamationTriangle className="text-xs flex-shrink-0 mt-0.5 text-red-500" />
-                        <span>{error}</span>
-                      </div>
-                      <div className="pl-5 pt-1">
-                        <Link
-                          to="/recuperar-password"
-                          className="font-bold underline text-[11px] text-red-800"
-                        >
-                          Solicitar un nuevo enlace de recuperación
-                        </Link>
-                      </div>
-                    </div>
+                    <motion.div
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-xs text-red-600 font-medium bg-red-50 p-3 rounded-xl border border-red-100 flex items-start gap-2"
+                    >
+                      <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
+                      <span>{error}</span>
+                    </motion.div>
                   )}
 
-                  {/* BOTÓN DE ENVÍO */}
                   <button
                     type="submit"
-                    disabled={loading || !tokenFromUrl || !isLongEnough || !isMatching}
-                    className="w-full bg-[#8b5e3c] text-white py-3.5 px-4 rounded-xl hover:bg-[#754d31] active:scale-[0.99] transition font-semibold text-sm shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    disabled={isLoading || !tokenFromUrl || !isLongEnough || !isMatching}
+                    className="w-full flex justify-center items-center gap-2 py-3.5 px-4 rounded-xl shadow-lg text-sm font-bold text-white bg-[#8b5e3c] hover:bg-[#754d31] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8b5e3c] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 cursor-pointer active:scale-[0.99]"
                   >
-                    {loading ? (
+                    {isLoading ? (
                       <>
-                        <FaSpinner className="animate-spin text-base" />
-                        <span>Guardando nueva contraseña...</span>
+                        <Loader2 className="animate-spin h-5 w-5" />
+                        <span>ACTUALIZANDO CONTRASEÑA...</span>
                       </>
                     ) : (
-                      <>
-                        <FaShieldAlt className="text-xs" />
-                        <span>Guardar Nueva Contraseña</span>
-                      </>
+                      "ACTUALIZAR CONTRASEÑA"
                     )}
                   </button>
                 </form>
@@ -259,47 +288,47 @@ export default function RestablecerPassword() {
                 <div className="mt-7 pt-4 border-t border-gray-100 text-center">
                   <Link
                     to="/login"
-                    className="text-xs font-semibold text-gray-600 hover:text-[#8b5e3c] transition"
+                    className="inline-flex items-center justify-center gap-2 text-xs font-bold text-[#8b5e3c] hover:text-[#754d31] transition-colors group"
                   >
-                    Volver a Iniciar Sesión
+                    <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+                    Volver al Inicio de Sesión
                   </Link>
                 </div>
               </motion.div>
             ) : (
-              // VISTA DE ÉXITO
+              /* ESTADO 2: ¡CONTRASEÑA CAMBIADA! */
               <motion.div
                 key="success-view"
-                initial={{ opacity: 0, scale: 0.92 }}
+                initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="text-center space-y-4"
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.25 }}
+                className="text-center"
               >
-                <div className="w-16 h-16 bg-green-50 border-2 border-green-200 rounded-full flex items-center justify-center mx-auto text-green-600 shadow-sm">
-                  <FaCheckCircle className="text-3xl" />
+                <div className="flex justify-center mb-5">
+                  <div className="p-4 bg-emerald-100 rounded-full text-emerald-600 shadow-sm">
+                    <CheckCircle2 size={48} />
+                  </div>
                 </div>
 
-                <div>
-                  <h3 className="text-xl font-bold text-gray-800">
-                    ¡Contraseña Restablecida!
-                  </h3>
-                  <p className="text-xs text-gray-600 mt-2 leading-relaxed">
-                    {message}
-                  </p>
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3">
+                  ¡Contraseña Cambiada!
+                </h2>
+
+                <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+                  Tu contraseña ha sido actualizada con éxito. Ya puedes iniciar sesión en Corazón Artesano.
+                </p>
+
+                <div className="p-3 bg-amber-50/70 border border-amber-200/70 rounded-xl text-xs text-amber-900 mb-6">
+                  Redirigiendo al login en <strong>{countdown}</strong> segundos...
                 </div>
 
-                <div className="p-4 bg-[#fbf9f6] border border-[#ebdcd0] rounded-2xl text-xs text-[#8b5e3c] font-medium">
-                  Redirigiendo a la pantalla de acceso en <strong>{countdown}</strong> segundos...
-                </div>
-
-                <div className="pt-2">
-                  <button
-                    type="button"
-                    onClick={() => navigate("/login")}
-                    className="w-full bg-[#8b5e3c] text-white py-3 px-4 rounded-xl hover:bg-[#754d31] transition font-semibold text-xs shadow-md flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <span>Iniciar Sesión Ahora</span>
-                    <FaArrowRight className="text-[10px]" />
-                  </button>
-                </div>
+                <Link
+                  to="/login"
+                  className="w-full inline-flex justify-center items-center gap-2 py-3.5 px-4 bg-[#8b5e3c] text-white rounded-xl font-bold hover:bg-[#754d31] transition shadow-md text-sm active:scale-[0.99]"
+                >
+                  IR AL LOGIN
+                </Link>
               </motion.div>
             )}
           </AnimatePresence>
