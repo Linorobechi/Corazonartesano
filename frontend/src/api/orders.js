@@ -12,3 +12,16 @@ export const getUserOrders = async () => {
   const response = await apiClient("/api/orders");
   return parseResponse(response);
 };
+
+export const createMercadoPagoPreference = async (items) => {
+  const response = await apiClient("/api/mercadopago/create-preference", {
+    method: "POST",
+    body: JSON.stringify({ items }),
+  });
+  return parseResponse(response);
+};
+
+export const getMercadoPagoStatus = async (paymentId) => {
+  const response = await apiClient(`/api/mercadopago/status/${paymentId}`);
+  return parseResponse(response);
+};

@@ -20,6 +20,24 @@ export const authMiddleware = (req, res, next) => {
 };
 
 /**
+ * Middleware de autenticación opcional: adjunta req.user si el token es válido, pero no bloquea si falta.
+ */
+export const optionalAuthMiddleware = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) {
+    return next();
+  }
+
+  try {
+    const token = authHeader.slice(7);
+    req.user = jwt.verify(token, JWT_SECRET);
+  } catch (_error) {
+    // Token inválido o expirado, se continúa como invitado
+  }
+  return next();
+};
+
+/**
  * Middleware para control de acceso basado en roles (RBAC)
  * @param {string[]} allowedRoles - Lista de roles permitidos (ej. ['artesano', 'admin'])
  */
