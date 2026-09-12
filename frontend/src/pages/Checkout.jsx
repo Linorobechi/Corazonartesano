@@ -39,48 +39,49 @@ export default function Checkout() {
 
   const [pseBank, setPseBank] = useState("Bancolombia");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
   const [error, setError] = useState("");
 
-  // Manejar el retorno desde Mercado Pago Checkout Pro
-  useEffect(() => {
-    if (urlStatus) {
-      if (urlStatus === "approved") {
-        clearCart();
-        setResult({
-          status: "APPROVED",
-          orderId: orderId || "MP-ORDEN",
-          transaction_id: paymentId || `MP-${Date.now()}`,
-          paymentMethod: paymentType ? `Mercado Pago (${paymentType})` : "Mercado Pago Colombia",
-          subtotal,
-          tax,
-          shipping,
-          formattedTotal: total ? formatCurrency(total) : "Confirmado",
-          emailSentTo: user?.email || "tu correo registrado",
-        });
-      } else if (urlStatus === "pending" || urlStatus === "in_process") {
-        setResult({
-          status: "PENDING",
-          orderId: orderId || "MP-PENDIENTE",
-          transaction_id: paymentId || "Pendiente",
-          paymentMethod: "Mercado Pago (Efecty / Transferencia)",
-          subtotal,
-          tax,
-          shipping,
-          formattedTotal: total ? formatCurrency(total) : "En proceso",
-          emailSentTo: user?.email || "tu correo registrado",
-        });
-      } else if (urlStatus === "failure" || urlStatus === "rejected") {
-        setResult({
-          status: "REJECTED",
-          orderId: orderId || "MP-FALLIDO",
-          transaction_id: paymentId || "Cancelado",
-          paymentMethod: "Mercado Pago",
-          emailSentTo: user?.email || "tu correo registrado",
-        });
-      }
+  // Inicializar el resultado sincronizadamente si venimos redirigidos de Mercado Pago
+  const [result, setResult] = useState(() => {
+    if (!urlStatus) return null;
+    if (urlStatus === "approved") {
+      return {
+        status: "APPROVED",
+        orderId: orderId || "MP-ORDEN",
+        transaction_id: paymentId || `MP-${Date.now()}`,
+        paymentMethod: paymentType ? `Mercado Pago (${paymentType})` : "Mercado Pago Colombia",
+        formattedTotal: "Aprobado",
+        emailSentTo: user?.email || "tu correo registrado",
+      };
     }
-  }, [urlStatus, orderId, paymentId, paymentType]);
+    if (urlStatus === "pending" || urlStatus === "in_process") {
+      return {
+        status: "PENDING",
+        orderId: orderId || "MP-PENDIENTE",
+        transaction_id: paymentId || "Pendiente",
+        paymentMethod: "Mercado Pago (Efecty / Transferencia)",
+        formattedTotal: "En proceso",
+        emailSentTo: user?.email || "tu correo registrado",
+      };
+    }
+    if (urlStatus === "failure" || urlStatus === "rejected") {
+      return {
+        status: "REJECTED",
+        orderId: orderId || "MP-FALLIDO",
+        transaction_id: paymentId || "Cancelado",
+        paymentMethod: "Mercado Pago",
+        emailSentTo: user?.email || "tu correo registrado",
+      };
+    }
+    return null;
+  });
+
+  // Limpiar el carrito de compras cuando el pago es aprobado por Mercado Pago
+  useEffect(() => {
+    if (urlStatus === "approved") {
+      clearCart();
+    }
+  }, [urlStatus, clearCart]);
 
   const handleCardChange = (e) => {
     setCardForm({ ...cardForm, [e.target.name]: e.target.value });
