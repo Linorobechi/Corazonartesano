@@ -116,6 +116,51 @@ export const createTransporter = (options = {}) => {
   });
 };
 
+/**
+ * Envío de correo mediante Resend API por HTTPS (Puerto 443 estándar)
+ * Inmune a bloqueos de puertos (25, 465, 587) y problemas de IPv6 en Render.
+ */
+export const sendViaResend = async ({ to, subject, html, text }) => {
+  const apiKey = (process.env.RESEND_API_KEY || "").trim();
+  if (!apiKey) return null;
+
+  const from =
+    process.env.RESEND_FROM ||
+    "Corazón Artesano <onboarding@resend.dev>";
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to: Array.isArray(to) ? to : [to],
+        subject,
+        html,
+        text,
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      console.warn("⚠️ [RESEND API ERROR]:", data);
+      throw new Error(data.message || (typeof data === "object" ? JSON.stringify(data) : "Error en Resend"));
+    }
+
+    return {
+      success: true,
+      messageId: data.id,
+      provider: "resend",
+    };
+  } catch (err) {
+    console.error("❌ [RESEND API EXCEPTION]:", err.message);
+    throw err;
+  }
+};
+
 export const transporter = createTransporter();
 
 const LOGO_CDN_URL = "https://nuhsooerkqwuwcucwxcf.supabase.co/storage/v1/object/public/productos/logo.jpeg";
@@ -276,7 +321,26 @@ export const sendResetPasswordEmail = async (toEmail, resetToken, baseUrl) => {
     },
   };
 
-  // Intentar envío a través de las IPs numéricas IPv4 de Google (100% libre de IPv6 / ENETUNREACH)
+  // 1. PRIORIDAD: Si está configurado RESEND_API_KEY, enviar de forma instantánea por HTTPS
+  if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim() !== "") {
+    try {
+      const resendRes = await sendViaResend({
+        to: toEmail,
+        subject: "Recuperación de Contraseña - Corazón Artesano",
+        text: textContent,
+        html: htmlContent,
+      });
+
+      if (resendRes && resendRes.success) {
+        console.log(`[EMAIL DELIVERED VIA RESEND HTTPS] A: ${toEmail} | Id: ${resendRes.messageId} | Link: ${resetUrl}`);
+        return { success: true, messageId: resendRes.messageId, resetUrl, realEmailSent: true, provider: "resend" };
+      }
+    } catch (resendErr) {
+      console.warn(`[AVISO RESEND FALLÓ, INTENTANDO SMTP DE RESPALDO]: ${resendErr.message}`);
+    }
+  }
+
+  // 2. RESPALDO: Intentar envío a través de las IPs numéricas IPv4 de Google (100% libre de IPv6 / ENETUNREACH)
   const candidateIps = await getGmailIPv4Candidates();
   const portsToTry = [587, 465];
 
@@ -287,14 +351,14 @@ export const sendResetPasswordEmail = async (toEmail, resetToken, baseUrl) => {
         if (!directTransporter) continue;
         const info = await directTransporter.sendMail(mailOptions);
         console.log(`[EMAIL DELIVERED VIA IPv4 ${ip}:${testPort}] A: ${toEmail} | Id: ${info.messageId} | Link: ${resetUrl}`);
-        return { success: true, messageId: info.messageId, resetUrl, realEmailSent: true };
+        return { success: true, messageId: info.messageId, resetUrl, realEmailSent: true, provider: "smtp" };
       } catch (err) {
         console.warn(`[INTENTO MAILER ${ip}:${testPort}]: ${err.message}`);
       }
     }
   }
 
-  console.error(`[ERROR FATAL ENVIANDO CORREO REAL A ${toEmail}]: Se agotaron las IPs IPv4 de respaldo.`);
+  console.error(`[ERROR FATAL ENVIANDO CORREO REAL A ${toEmail}]: Se agotaron las opciones de envío.`);
   return { success: true, error: "Timeout en servidores SMTP", resetUrl, realEmailSent: false, simulated: true };
 };
 
@@ -302,6 +366,19 @@ export const sendResetPasswordEmail = async (toEmail, resetToken, baseUrl) => {
  * Envío genérico de notificaciones por correo (órdenes, avisos de compra, etc.)
  */
 export const sendEmailNotification = async ({ to, subject, html, text }) => {
+  // 1. PRIORIDAD: Si está configurado RESEND_API_KEY, enviar por HTTPS
+  if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim() !== "") {
+    try {
+      const resendRes = await sendViaResend({ to, subject, html, text });
+      if (resendRes && resendRes.success) {
+        console.log(`[REAL EMAIL DELIVERED VIA RESEND HTTPS TO: ${to}] Id: ${resendRes.messageId}`);
+        return { success: true, messageId: resendRes.messageId, realEmailSent: true, provider: "resend" };
+      }
+    } catch (resendErr) {
+      console.warn(`[RESEND NOTIFICACION FALLÓ, INTENTANDO SMTP]: ${resendErr.message}`);
+    }
+  }
+
   const { user, pass, from } = getMailConfig();
 
   if (!user || !pass) {
