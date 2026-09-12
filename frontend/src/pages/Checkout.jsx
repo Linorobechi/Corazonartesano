@@ -1,19 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useCart } from "../context/CartContext";
 import { motion } from "framer-motion";
 import Footer from "../Components/Footer";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
+  FaCreditCard,
+  FaUniversity,
   FaShieldAlt,
   FaCheckCircle,
   FaTimesCircle,
   FaLock,
   FaShoppingBag,
   FaEnvelope,
-  FaClock,
-  FaExternalLinkAlt,
 } from "react-icons/fa";
-import { createMercadoPagoPreference } from "../api/orders";
+import { checkoutOrder } from "../api/orders";
 
 export default function Checkout() {
   const { cartItems, subtotal, tax, shipping, total, clearCart, formatCurrency } = useCart();
@@ -21,56 +21,22 @@ export default function Checkout() {
   const storedUser = localStorage.getItem("auth_user");
   const user = storedUser ? JSON.parse(storedUser) : null;
 
-  const [searchParams] = useSearchParams();
-  const urlStatus = searchParams.get("status") || searchParams.get("collection_status");
-  const paymentId = searchParams.get("payment_id") || searchParams.get("collection_id");
-  const orderId = searchParams.get("order_id") || searchParams.get("external_reference");
-  const paymentType = searchParams.get("payment_type");
-
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  // Inicializar el resultado sincronizadamente si venimos redirigidos de Mercado Pago
-  const [result, setResult] = useState(() => {
-    if (!urlStatus) return null;
-    if (urlStatus === "approved") {
-      return {
-        status: "APPROVED",
-        orderId: orderId || "MP-ORDEN",
-        transaction_id: paymentId || `MP-${Date.now()}`,
-        paymentMethod: paymentType ? `Mercado Pago (${paymentType})` : "Mercado Pago Colombia",
-        formattedTotal: "Aprobado",
-        emailSentTo: user?.email || "tu correo registrado",
-      };
-    }
-    if (urlStatus === "pending" || urlStatus === "in_process") {
-      return {
-        status: "PENDING",
-        orderId: orderId || "MP-PENDIENTE",
-        transaction_id: paymentId || "Pendiente",
-        paymentMethod: "Mercado Pago (Efecty / Transferencia)",
-        formattedTotal: "En proceso",
-        emailSentTo: user?.email || "tu correo registrado",
-      };
-    }
-    if (urlStatus === "failure" || urlStatus === "rejected") {
-      return {
-        status: "REJECTED",
-        orderId: orderId || "MP-FALLIDO",
-        transaction_id: paymentId || "Cancelado",
-        paymentMethod: "Mercado Pago",
-        emailSentTo: user?.email || "tu correo registrado",
-      };
-    }
-    return null;
+  const [paymentMethod, setPaymentMethod] = useState("card");
+  const [cardForm, setCardForm] = useState({
+    name: user?.nombre || "",
+    number: "4532 8901 2345 6789",
+    expiry: "12/28",
+    cvc: "888",
   });
 
-  // Limpiar el carrito de compras cuando el pago es aprobado por Mercado Pago
-  useEffect(() => {
-    if (urlStatus === "approved") {
-      clearCart();
-    }
-  }, [urlStatus, clearCart]);
+  const [pseBank, setPseBank] = useState("Bancolombia");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+
+  const handleCardChange = (e) => {
+    setCardForm({ ...cardForm, [e.target.name]: e.target.value });
+  };
 
   const handleProcessPayment = async (e) => {
     e.preventDefault();
@@ -78,22 +44,40 @@ export default function Checkout() {
     setLoading(true);
 
     try {
-      const preferenceData = await createMercadoPagoPreference(cartItems);
-      const redirectUrl = preferenceData?.sandboxInitPoint || preferenceData?.initPoint;
-
-      if (redirectUrl) {
-        window.location.href = redirectUrl;
-        return;
+      const token = localStorage.getItem("auth_token");
+      if (!token) {
+        throw new Error("Debes iniciar sesión para finalizar la compra");
       }
-      throw new Error(preferenceData?.message || "No se pudo generar el enlace de pago de Mercado Pago");
+
+      const payload = {
+        items: cartItems,
+        paymentMethod:
+          paymentMethod === "card"
+            ? "Tarjeta de Crédito / Débito"
+            : paymentMethod === "pse"
+            ? `PSE (${pseBank})`
+            : "Transferencia / Nequi",
+        paymentDetails: {
+          cardNumber: cardForm.number,
+          cardName: cardForm.name,
+          bank: pseBank,
+        },
+      };
+
+      const data = await checkoutOrder(payload);
+
+      setResult(data);
+      if (data.status === "APPROVED") {
+        clearCart();
+      }
     } catch (err) {
-      setError(err.message || "Ocurrió un problema al conectar con Mercado Pago");
+      setError(err.message || "Ocurrió un problema al procesar el pago");
     } finally {
       setLoading(false);
     }
   };
 
-  if (cartItems.length === 0 && !result && !urlStatus) {
+  if (cartItems.length === 0 && !result) {
     return (
       <>
         <div className="bg-[#f5f1ec] pt-28 pb-20 px-4 min-h-[70vh] flex flex-col items-center justify-center text-center">
@@ -124,18 +108,18 @@ export default function Checkout() {
             </span>
             <h1 className="text-3xl font-bold text-[#8b5e3c]">Finalizar Compra</h1>
             <p className="text-xs text-gray-600">
-              Pagos protegidos mediante cifrado de 256 bits y verificación instantánea con Mercado Pago Colombia.
+              Procesamiento de pagos directo y cifrado para artesanías colombianas.
             </p>
           </div>
 
           {result ? (
-            /* PAYMENT RESULT MODAL / VIEW */
+            /* PAYMENT RESULT VIEW */
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               className="bg-white rounded-3xl shadow-xl p-8 max-w-xl mx-auto text-center border border-[#eae0d5] space-y-6"
             >
-              {result.status === "APPROVED" && (
+              {result.status === "APPROVED" ? (
                 <>
                   <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto">
                     <FaCheckCircle className="text-4xl" />
@@ -151,38 +135,32 @@ export default function Checkout() {
                     <p className="font-semibold text-gray-800 border-b pb-2 text-sm">
                       Resumen del Pago
                     </p>
-                    {result.subtotal && (
-                      <div className="flex justify-between">
-                        <span>Subtotal:</span>
-                        <span className="font-semibold">{formatCurrency(result.subtotal)}</span>
-                      </div>
-                    )}
-                    {result.tax && (
-                      <div className="flex justify-between">
-                        <span>IVA (19%):</span>
-                        <span className="font-semibold">{formatCurrency(result.tax)}</span>
-                      </div>
-                    )}
-                    {result.shipping !== undefined && (
-                      <div className="flex justify-between">
-                        <span>Envío:</span>
-                        <span className="font-semibold">
-                          {result.shipping === 0 ? "GRATIS" : formatCurrency(result.shipping)}
-                        </span>
-                      </div>
-                    )}
+                    <div className="flex justify-between">
+                      <span>Subtotal:</span>
+                      <span className="font-semibold">{formatCurrency(result.subtotal)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>IVA (19%):</span>
+                      <span className="font-semibold">{formatCurrency(result.tax)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Envío:</span>
+                      <span className="font-semibold">
+                        {result.shipping === 0 ? "GRATIS" : formatCurrency(result.shipping)}
+                      </span>
+                    </div>
                     <div className="flex justify-between text-sm font-bold text-[#8b5e3c] pt-2 border-t">
                       <span>Total Abonado:</span>
-                      <span>{result.formattedTotal || formatCurrency(total)}</span>
+                      <span>{result.formattedTotal}</span>
                     </div>
                   </div>
 
                   <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl flex items-center gap-3 text-left text-xs text-blue-800">
                     <FaEnvelope className="text-xl flex-shrink-0" />
                     <div>
-                      <p className="font-semibold">Transacción Registrada</p>
+                      <p className="font-semibold">Orden Confirmada</p>
                       <p>
-                        Tu orden ha sido registrada en el sistema y se encuentra en preparación para despacho.
+                        Tu pedido ha sido registrado con éxito y preparado para despacho.
                       </p>
                     </div>
                   </div>
@@ -202,55 +180,20 @@ export default function Checkout() {
                     </Link>
                   </div>
                 </>
-              )}
-
-              {result.status === "PENDING" && (
-                <>
-                  <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto">
-                    <FaClock className="text-4xl" />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold text-amber-700">Pago en Proceso de Acreditación</h2>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Orden #{result.orderId} | ID Transacción: {result.transaction_id}
-                    </p>
-                  </div>
-
-                  <p className="text-sm text-gray-600">
-                    Tu pago a través de Mercado Pago está en proceso. Si seleccionaste pago en efectivo (Efecty) o transferencia bancaria, se confirmará una vez recibido el depósito.
-                  </p>
-
-                  <div className="pt-4 flex justify-center gap-4">
-                    <Link
-                      to="/panel"
-                      className="bg-[#8b5e3c] text-white px-6 py-3 rounded-xl font-semibold text-sm hover:bg-[#754d31]"
-                    >
-                      Ver Mis Pedidos
-                    </Link>
-                    <Link
-                      to="/productos"
-                      className="bg-[#eae0d5] text-[#8b5e3c] px-6 py-3 rounded-xl font-semibold text-sm hover:bg-[#ded2c4]"
-                    >
-                      Seguir Comprando
-                    </Link>
-                  </div>
-                </>
-              )}
-
-              {result.status === "REJECTED" && (
+              ) : (
                 <>
                   <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto">
                     <FaTimesCircle className="text-4xl" />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-red-700">Pago Rechazado o Cancelado</h2>
+                    <h2 className="text-2xl font-bold text-red-700">Pago Rechazado</h2>
                     <p className="text-xs text-gray-500 mt-1">
                       ID Transacción: {result.transaction_id}
                     </p>
                   </div>
 
                   <p className="text-sm text-gray-600">
-                    La pasarela de pago no pudo completar la transacción o fue cancelada. Por favor verifica tus datos o intenta con otro medio de pago en Mercado Pago.
+                    La entidad financiera no aprobó la transacción. Por favor verifica el saldo o intenta con otro método de pago.
                   </p>
 
                   <button
@@ -265,71 +208,162 @@ export default function Checkout() {
           ) : (
             /* CHECKOUT FORM */
             <div className="grid lg:grid-cols-3 gap-8">
-              {/* Payment Info & Form */}
+              {/* Payment Methods & Form */}
               <div className="lg:col-span-2 space-y-6">
-                {/* Method presentation */}
+                {/* Method selector */}
                 <div className="bg-white p-6 rounded-3xl shadow-sm border border-[#eae0d5] space-y-4">
-                  <h3 className="text-lg font-bold text-gray-800">Método de Pago</h3>
-                  <div className="p-4 rounded-2xl border-2 border-[#009ee3] bg-[#f0f9ff] flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-[#009ee3] text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <h3 className="text-lg font-bold text-gray-800">1. Selecciona Método de Pago</h3>
+                  <div className="grid sm:grid-cols-3 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod("card")}
+                      className={`p-4 rounded-2xl border text-center flex flex-col items-center gap-2 transition ${
+                        paymentMethod === "card"
+                          ? "border-[#8b5e3c] bg-[#fbf7f3] text-[#8b5e3c] font-bold"
+                          : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      <FaCreditCard className="text-2xl" />
+                      <span className="text-xs font-semibold">Tarjeta Crédito / Débito</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod("pse")}
+                      className={`p-4 rounded-2xl border text-center flex flex-col items-center gap-2 transition ${
+                        paymentMethod === "pse"
+                          ? "border-[#8b5e3c] bg-[#fbf7f3] text-[#8b5e3c] font-bold"
+                          : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      <FaUniversity className="text-2xl" />
+                      <span className="text-xs font-semibold">PSE (Débito Bancario)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod("transfer")}
+                      className={`p-4 rounded-2xl border text-center flex flex-col items-center gap-2 transition ${
+                        paymentMethod === "transfer"
+                          ? "border-[#8b5e3c] bg-[#fbf7f3] text-[#8b5e3c] font-bold"
+                          : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
                       <FaShieldAlt className="text-2xl" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-sm font-bold text-gray-900">Mercado Pago Colombia</h4>
-                        <span className="bg-[#009ee3] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                          Oficial
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-600 mt-0.5">
-                        PSE, Tarjetas de Crédito y Débito, Nequi y Efectivo en Efecty.
-                      </p>
-                    </div>
+                      <span className="text-xs font-semibold">Nequi / Daviplata</span>
+                    </button>
                   </div>
                 </div>
 
-                {/* Form */}
+                {/* Method Form */}
                 <form
                   onSubmit={handleProcessPayment}
-                  className="bg-white p-6 rounded-3xl shadow-sm border border-[#eae0d5] space-y-5"
+                  className="bg-white p-6 rounded-3xl shadow-sm border border-[#eae0d5] space-y-4"
                 >
-                  <h3 className="text-lg font-bold text-gray-800">Confirmación y Pago</h3>
+                  <h3 className="text-lg font-bold text-gray-800">2. Datos de Pago</h3>
 
-                  <div className="p-5 bg-gradient-to-br from-[#009ee3]/10 via-[#009ee3]/5 to-transparent border border-[#009ee3]/30 rounded-2xl space-y-4">
-                    <div className="flex items-center gap-2">
-                      <span className="bg-[#009ee3] text-white text-xs font-bold px-2.5 py-1 rounded-lg">
-                        Mercado Pago Oficial
-                      </span>
-                      <span className="text-xs text-gray-600 font-medium">Colombia (MCO - COP)</span>
+                  {paymentMethod === "card" && (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                          Nombre en la Tarjeta
+                        </label>
+                        <input
+                          name="name"
+                          value={cardForm.name}
+                          onChange={handleCardChange}
+                          required
+                          placeholder="Nombre del Titular"
+                          className="w-full px-4 py-3 rounded-xl bg-[#f1ece7] text-sm outline-none focus:ring-2 focus:ring-[#8b5e3c]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                          Número de Tarjeta
+                        </label>
+                        <input
+                          name="number"
+                          value={cardForm.number}
+                          onChange={handleCardChange}
+                          required
+                          placeholder="4532 8901 2345 6789"
+                          className="w-full px-4 py-3 rounded-xl bg-[#f1ece7] text-sm outline-none focus:ring-2 focus:ring-[#8b5e3c]"
+                        />
+                        <p className="text-[10px] text-gray-500 mt-1">
+                          Tip: Tarjetas que terminen en <strong>0000</strong> simularán un pago rechazado.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">
+                            Vencimiento
+                          </label>
+                          <input
+                            name="expiry"
+                            value={cardForm.expiry}
+                            onChange={handleCardChange}
+                            required
+                            placeholder="MM/AA"
+                            className="w-full px-4 py-3 rounded-xl bg-[#f1ece7] text-sm outline-none focus:ring-2 focus:ring-[#8b5e3c]"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">
+                            CVC / CVV
+                          </label>
+                          <input
+                            name="cvc"
+                            value={cardForm.cvc}
+                            onChange={handleCardChange}
+                            required
+                            placeholder="123"
+                            maxLength="4"
+                            className="w-full px-4 py-3 rounded-xl bg-[#f1ece7] text-sm outline-none focus:ring-2 focus:ring-[#8b5e3c]"
+                          />
+                        </div>
+                      </div>
                     </div>
+                  )}
 
-                    <p className="text-xs text-gray-700 leading-relaxed">
-                      Al hacer clic en <strong>Pagar con Mercado Pago</strong>, serás redirigido a la pasarela segura oficial de Mercado Pago Colombia para seleccionar tu método favorito y completar la transacción.
-                    </p>
+                  {paymentMethod === "pse" && (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                          Selecciona tu Banco
+                        </label>
+                        <select
+                          value={pseBank}
+                          onChange={(e) => setPseBank(e.target.value)}
+                          className="w-full px-4 py-3 rounded-xl bg-[#f1ece7] text-sm outline-none focus:ring-2 focus:ring-[#8b5e3c]"
+                        >
+                          <option value="Bancolombia">Bancolombia</option>
+                          <option value="Davivienda">Davivienda</option>
+                          <option value="Nequi">Nequi</option>
+                          <option value="Banco de Bogotá">Banco de Bogotá</option>
+                          <option value="BBVA Colombia">BBVA Colombia</option>
+                        </select>
+                      </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      <div className="bg-white p-2.5 rounded-xl border border-gray-100 text-center shadow-xs">
-                        <p className="text-[11px] font-bold text-gray-800">PSE</p>
-                        <p className="text-[9px] text-gray-500">Cualquier banco</p>
-                      </div>
-                      <div className="bg-white p-2.5 rounded-xl border border-gray-100 text-center shadow-xs">
-                        <p className="text-[11px] font-bold text-gray-800">Tarjetas</p>
-                        <p className="text-[9px] text-gray-500">Crédito y Débito</p>
-                      </div>
-                      <div className="bg-white p-2.5 rounded-xl border border-gray-100 text-center shadow-xs">
-                        <p className="text-[11px] font-bold text-gray-800">Nequi</p>
-                        <p className="text-[9px] text-gray-500">Billetera virtual</p>
-                      </div>
-                      <div className="bg-white p-2.5 rounded-xl border border-gray-100 text-center shadow-xs">
-                        <p className="text-[11px] font-bold text-gray-800">Efecty</p>
-                        <p className="text-[9px] text-gray-500">Efectivo en punto</p>
-                      </div>
+                      <p className="text-xs text-gray-500 bg-[#faf7f2] p-3 rounded-xl border border-[#ede3d8]">
+                        Procesamiento directo a través de la red bancaria segura de {pseBank}.
+                      </p>
                     </div>
+                  )}
 
-                    <p className="text-[11px] text-gray-500 flex items-center gap-1.5">
-                      <FaLock className="text-[10px] text-green-600" /> Transacción encriptada con tecnología SSL de 256 bits y Checkout Pro oficial.
-                    </p>
-                  </div>
+                  {paymentMethod === "transfer" && (
+                    <div className="bg-[#faf7f2] p-4 rounded-xl border border-[#ede3d8] space-y-2 text-xs text-gray-700">
+                      <p className="font-semibold text-gray-800 text-sm">Transferencia Directa Nequi / Daviplata</p>
+                      <p>
+                        Transferir al número: <strong>300 123 4567</strong> a nombre de <em>Corazón Artesano S.A.S.</em>
+                      </p>
+                      <p className="text-[11px] text-gray-500">
+                        Una vez confirmado, tu pedido se registrará y preparará de inmediato.
+                      </p>
+                    </div>
+                  )}
 
                   {error && (
                     <p className="text-xs text-red-600 bg-red-50 p-3 rounded-xl border border-red-200">
@@ -340,13 +374,10 @@ export default function Checkout() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-3.5 rounded-xl transition font-bold text-sm shadow-md flex items-center justify-center gap-2 disabled:opacity-70 bg-[#009ee3] hover:bg-[#0087c2] text-white"
+                    className="w-full bg-[#8b5e3c] text-white py-3.5 rounded-xl hover:bg-[#754d31] transition font-bold text-sm shadow-md flex items-center justify-center gap-2 disabled:opacity-70"
                   >
-                    <FaShieldAlt />
-                    {loading
-                      ? "Conectando con Mercado Pago..."
-                      : `Pagar ${formatCurrency(total)} con Mercado Pago`}
-                    <FaExternalLinkAlt className="text-xs ml-1" />
+                    <FaLock />
+                    {loading ? "Procesando Pago..." : `Pagar ${formatCurrency(total)}`}
                   </button>
                 </form>
               </div>
