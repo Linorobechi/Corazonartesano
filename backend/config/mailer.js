@@ -102,10 +102,76 @@ export const transporter = null;
 
 /**
  * Envío de notificaciones por correo electrónico
+ * Soporta APIs HTTPS (Resend, Brevo) que funcionan en el plan Free de Render sin bloqueos de puertos,
+ * o transporte SMTP estándar (Gmail / Nodemailer).
  */
 export const sendEmailNotification = async ({ to, subject, html, text }) => {
   const { user, pass, from } = getMailConfig();
 
+  // 1. INTENTO VÍA RESEND (API HTTPS - Puerto 443, 100% compatible con Render Free)
+  const resendKey = cleanVal(process.env.RESEND_API_KEY);
+  if (resendKey) {
+    try {
+      const senderFrom = cleanVal(process.env.RESEND_FROM) || cleanVal(process.env.EMAIL_FROM) || "Corazón Artesano <onboarding@resend.dev>";
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${resendKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: senderFrom,
+          to: [to],
+          subject,
+          html,
+          text,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        return { success: true, messageId: data.id, realEmailSent: true, provider: "Resend (HTTPS)" };
+      } else {
+        console.error("❌ [MAILER] Error en Resend API:", data.message || JSON.stringify(data));
+      }
+    } catch (err) {
+      console.error("❌ [MAILER] Error de red con Resend:", err.message);
+    }
+  }
+
+  // 2. INTENTO VÍA BREVO / SENDINBLUE (API HTTPS - Puerto 443, 300 correos gratis/día a cualquier correo)
+  const brevoKey = cleanVal(process.env.BREVO_API_KEY) || cleanVal(process.env.SENDINBLUE_API_KEY);
+  if (brevoKey) {
+    try {
+      const senderEmail = user || "notificaciones@corazonartesano.com";
+      const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+          "api-key": brevoKey,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          sender: { name: "Corazón Artesano", email: senderEmail },
+          to: [{ email: to }],
+          subject,
+          htmlContent: html,
+          textContent: text,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        return { success: true, messageId: data.messageId, realEmailSent: true, provider: "Brevo (HTTPS)" };
+      } else {
+        console.error("❌ [MAILER] Error en Brevo API:", data.message || JSON.stringify(data));
+      }
+    } catch (err) {
+      console.error("❌ [MAILER] Error de red con Brevo:", err.message);
+    }
+  }
+
+  // 3. INTENTO VÍA NODEMAILER SMTP (Requiere puertos 465/587 abiertos)
   if (!user || !pass) {
     console.log(`ℹ️ [MAILER] Variables de correo: user=${user ? "CONFIGURADO (" + user + ")" : "NO DETECTADO"} | pass=${pass ? "CONFIGURADO (***)" : "NO DETECTADO"}`);
     return { success: true, realEmailSent: false, simulated: true };
@@ -125,9 +191,12 @@ export const sendEmailNotification = async ({ to, subject, html, text }) => {
       html,
     });
 
-    return { success: true, messageId: info.messageId, realEmailSent: true };
+    return { success: true, messageId: info.messageId, realEmailSent: true, provider: "SMTP" };
   } catch (err) {
     console.error("❌ [MAILER] Error al enviar correo SMTP:", err.message);
+    if (err.message && err.message.includes("timeout")) {
+      console.log("ℹ️ [MAILER] Causa del timeout: Render en su plan Free bloquea los puertos salientes SMTP (25, 465 y 587). Para enviar correos en Render Free se recomienda usar una API HTTPS (como RESEND_API_KEY o BREVO_API_KEY).");
+    }
     return { success: false, realEmailSent: false, error: err.message };
   }
 };
