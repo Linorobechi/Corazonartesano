@@ -12,81 +12,88 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 dotenv.config();
 
+const cleanVal = (val) => (val ? String(val).trim().replace(/^["']|["']$/g, "") : null);
+
 /**
- * Obtiene la configuración de correo si existe en variables de entorno
+ * Obtiene la configuración de correo si existe en variables de entorno,
+ * admitiendo cualquier variación de nombre común (EMAIL_USER, MAIL_USERNAME, EMAIL_PASSWORD, etc.)
  */
 export const getMailConfig = () => {
   const host =
-    process.env.EMAIL_HOST ||
-    process.env.SMTP_HOST ||
-    process.env.MAIL_HOST ||
+    cleanVal(process.env.EMAIL_HOST) ||
+    cleanVal(process.env.MAIL_HOST) ||
+    cleanVal(process.env.SMTP_HOST) ||
     "smtp.gmail.com";
 
-  const rawPort = process.env.EMAIL_PORT || process.env.SMTP_PORT || process.env.MAIL_PORT;
-  const port = rawPort ? Number(rawPort) : 587;
+  const rawPort =
+    cleanVal(process.env.EMAIL_PORT) ||
+    cleanVal(process.env.MAIL_PORT) ||
+    cleanVal(process.env.SMTP_PORT);
+  const port = rawPort ? Number(rawPort) : 465;
 
   const secure =
     process.env.EMAIL_SECURE !== undefined
-      ? process.env.EMAIL_SECURE === "true"
+      ? String(process.env.EMAIL_SECURE).toLowerCase() === "true"
       : port === 465;
 
   const user =
-    process.env.EMAIL_USER ||
-    process.env.SMTP_USER ||
-    process.env.MAIL_USER ||
-    process.env.GMAIL_USER ||
+    cleanVal(process.env.EMAIL_USER) ||
+    cleanVal(process.env.EMAIL_USERNAME) ||
+    cleanVal(process.env.MAIL_USER) ||
+    cleanVal(process.env.MAIL_USERNAME) ||
+    cleanVal(process.env.SMTP_USER) ||
+    cleanVal(process.env.SMTP_USERNAME) ||
+    cleanVal(process.env.GMAIL_USER) ||
     null;
 
   const pass =
-    process.env.EMAIL_PASS ||
-    process.env.SMTP_PASS ||
-    process.env.MAIL_PASS ||
-    process.env.GMAIL_APP_PASSWORD ||
+    cleanVal(process.env.EMAIL_PASS) ||
+    cleanVal(process.env.EMAIL_PASSWORD) ||
+    cleanVal(process.env.MAIL_PASS) ||
+    cleanVal(process.env.MAIL_PASSWORD) ||
+    cleanVal(process.env.SMTP_PASS) ||
+    cleanVal(process.env.SMTP_PASSWORD) ||
+    cleanVal(process.env.GMAIL_APP_PASSWORD) ||
+    cleanVal(process.env.GMAIL_PASSWORD) ||
     null;
 
   const from =
-    process.env.EMAIL_FROM ||
+    cleanVal(process.env.EMAIL_FROM) ||
+    cleanVal(process.env.MAIL_FROM) ||
     (user ? `"Corazón Artesano" <${user}>` : '"Corazón Artesano" <no-reply@corazonartesano.com>');
 
   return { host, port, secure, user, pass, from };
 };
 
-// IPs IPv4 de respaldo para smtp.gmail.com
-const GMAIL_IPV4_FALLBACKS = [
-  "172.253.147.109",
-  "172.253.147.108",
-  "142.250.141.108",
-  "142.250.141.109",
-];
-
 /**
- * Crea el transportador de Nodemailer sólo si existen credenciales configuradas
+ * Crea el transportador de Nodemailer.
+ * Si es Gmail, utiliza el servicio oficial 'gmail' de Nodemailer para evitar bloqueos por IP o TLS.
  */
-export const createTransporter = (options = {}) => {
-  const { host, port, user, pass } = getMailConfig();
+export const createTransporter = () => {
+  const { host, port, secure, user, pass } = getMailConfig();
 
   if (!user || !pass) {
     return null;
   }
 
-  const isGmail = (host || "").includes("gmail") || (user || "").endsWith("@gmail.com");
-  const targetPort = options.port || port || 587;
-  const isSecure = targetPort === 465;
-  const targetHost = options.host || (isGmail ? GMAIL_IPV4_FALLBACKS[0] : host);
+  const isGmail =
+    (host || "").toLowerCase().includes("gmail") ||
+    (user || "").toLowerCase().endsWith("@gmail.com");
+
+  if (isGmail) {
+    return nodemailer.createTransport({
+      service: "gmail",
+      auth: { user, pass },
+    });
+  }
 
   return nodemailer.createTransport({
-    host: targetHost,
-    port: targetPort,
-    secure: isSecure,
-    servername: isGmail ? "smtp.gmail.com" : targetHost,
-    connectionTimeout: 10000,
-    greetingTimeout: 8000,
-    socketTimeout: 12000,
+    host,
+    port,
+    secure,
     auth: { user, pass },
     tls: {
-      servername: isGmail ? "smtp.gmail.com" : targetHost,
       rejectUnauthorized: false,
-      minVersion: "TLSv1.2",
     },
   });
 };
@@ -94,17 +101,13 @@ export const createTransporter = (options = {}) => {
 export const transporter = null;
 
 /**
- * Envío opcional de notificaciones por correo (órdenes/compras)
- * Si no hay credenciales configuradas, finaliza de manera silenciosa sin advertencias en la terminal.
- */
-/**
- * Envío opcional de notificaciones por correo (órdenes/compras)
- * Si no hay credenciales configuradas, finaliza de manera silenciosa sin advertencias en la terminal.
+ * Envío de notificaciones por correo electrónico
  */
 export const sendEmailNotification = async ({ to, subject, html, text }) => {
   const { user, pass, from } = getMailConfig();
 
   if (!user || !pass) {
+    console.log(`ℹ️ [MAILER] Variables de correo: user=${user ? "CONFIGURADO (" + user + ")" : "NO DETECTADO"} | pass=${pass ? "CONFIGURADO (***)" : "NO DETECTADO"}`);
     return { success: true, realEmailSent: false, simulated: true };
   }
 
@@ -123,8 +126,9 @@ export const sendEmailNotification = async ({ to, subject, html, text }) => {
     });
 
     return { success: true, messageId: info.messageId, realEmailSent: true };
-  } catch (_err) {
-    return { success: false, realEmailSent: false };
+  } catch (err) {
+    console.error("❌ [MAILER] Error al enviar correo SMTP:", err.message);
+    return { success: false, realEmailSent: false, error: err.message };
   }
 };
 
@@ -203,7 +207,7 @@ export const sendPasswordResetEmail = async ({ to, resetUrl, userName = "Usuario
   console.log("🔑 [CORAZÓN ARTESANO] RECUPERACIÓN DE CONTRASEÑA");
   console.log(`   Destinatario: ${to}`);
   console.log(`   Enlace de restablecimiento:\n   ${resetUrl}`);
-  console.log(`   Envío real SMTP: ${result.realEmailSent ? "✅ Enviado por correo" : "ℹ️ Simulado en consola (sin credenciales SMTP activas)"}`);
+  console.log(`   Envío real SMTP: ${result.realEmailSent ? "✅ Enviado por correo" : result.error ? `❌ Error SMTP: ${result.error}` : "ℹ️ Simulado en consola (sin credenciales SMTP activas)"}`);
   console.log("==================================================================\n");
 
   return result;
