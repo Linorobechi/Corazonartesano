@@ -9,6 +9,110 @@ const WOMPI_INTEGRITY_SECRET = process.env.WOMPI_INTEGRITY_SECRET || "test_integ
 const WOMPI_API_URL = process.env.WOMPI_API_URL || "https://sandbox.wompi.co/v1";
 
 /**
+ * Helper para enviar el comprobante por correo electrónico tanto para pagos APROBADOS como FALLIDOS/RECHAZADOS.
+ */
+const sendWompiReceiptEmail = async ({
+  email,
+  nombre,
+  orderId,
+  transactionId,
+  reference,
+  status,
+  total,
+  paymentMethod,
+}) => {
+  if (!email) return;
+
+  const isApproved = status === "APPROVED";
+  const statusLabel = isApproved ? "APROBADO" : "RECHAZADO / FALLIDO";
+  const headerColor = isApproved ? "#2e7d32" : "#c62828";
+  const statusBg = isApproved ? "#e8f5e9" : "#ffebee";
+  const statusTextColor = isApproved ? "#1b5e20" : "#b71c1c";
+
+  const emailSubject = isApproved
+    ? `¡Pago Aprobado! Comprobante de Compra Orden #${orderId} - Corazón Artesano`
+    : `Comprobante de Pago Rechazado / Fallido Orden #${orderId} - Corazón Artesano`;
+
+  const emailHtml = `
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e0e0e0; border-radius: 12px; background-color: #ffffff;">
+      <div style="text-align: center; padding-bottom: 20px; border-bottom: 2px solid #f0e6dd;">
+        <h2 style="color: ${headerColor}; margin: 0; font-size: 22px;">
+          ${isApproved ? "¡Pago Aprobado Exitosamente!" : "Notificación de Pago Rechazado / Fallido"}
+        </h2>
+        <p style="color: #777; font-size: 13px; margin-top: 5px;">Pasarela de Pagos Wompi Colombia</p>
+      </div>
+
+      <p style="font-size: 15px; color: #333; margin-top: 20px;">Hola <strong>${nombre || "Cliente"}</strong>,</p>
+      <p style="font-size: 14px; color: #555; line-height: 1.5;">
+        ${
+          isApproved
+            ? "Tu pago ha sido procesado con éxito mediante Wompi. Tu orden ha sido confirmada y está en preparación para su envío."
+            : "Lamentamos informarte que la transacción realizada en la pasarela Wompi fue <strong>rechazada o no pudo ser completada</strong> por la entidad bancaria."
+        }
+      </p>
+
+      <div style="background-color: #faf7f2; padding: 20px; border-radius: 10px; margin: 20px 0; border: 1px solid #ede3d8;">
+        <h3 style="margin-top: 0; color: #8b5e3c; font-size: 16px; border-bottom: 1px solid #e5d8cb; padding-bottom: 8px;">
+          Resumen del Comprobante
+        </h3>
+        <table style="width: 100%; font-size: 14px; color: #444; border-collapse: collapse;">
+          <tr>
+            <td style="padding: 6px 0;"><strong>N° de Orden:</strong></td>
+            <td style="text-align: right;">#${orderId}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0;"><strong>ID Transacción Wompi:</strong></td>
+            <td style="text-align: right; font-family: monospace;">${transactionId || "N/A"}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0;"><strong>Referencia Única:</strong></td>
+            <td style="text-align: right; font-family: monospace;">${reference || "N/A"}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0;"><strong>Método de Pago:</strong></td>
+            <td style="text-align: right;">${paymentMethod || "Wompi Colombia"}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0;"><strong>Estado del Pago:</strong></td>
+            <td style="text-align: right;">
+              <span style="background-color: ${statusBg}; color: ${statusTextColor}; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 12px;">
+                ${statusLabel}
+              </span>
+            </td>
+          </tr>
+          <tr style="border-top: 1px solid #e5d8cb;">
+            <td style="padding: 10px 0 0 0; font-size: 16px; color: #8b5e3c;"><strong>Total:</strong></td>
+            <td style="padding: 10px 0 0 0; text-align: right; font-size: 16px; font-weight: bold; color: #8b5e3c;">
+              ${formatCurrency(total)}
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      ${
+        !isApproved
+          ? `<div style="background-color: #fff3e0; border-left: 4px solid #ff9800; padding: 12px; margin-bottom: 20px; font-size: 13px; color: #e65100; border-radius: 4px;">
+              <strong>¿Qué puedes hacer?</strong><br />
+              Puedes ingresar a la tienda e intentar realizar el pago nuevamente con otra tarjeta, Nequi, Daviplata o PSE.
+             </div>`
+          : ""
+      }
+
+      <div style="text-align: center; font-size: 12px; color: #888; border-top: 1px solid #eeeeee; padding-top: 15px; margin-top: 20px;">
+        <p style="margin: 0;">Corazón Artesano - Apoyando la tradición artesanal colombiana.</p>
+      </div>
+    </div>
+  `;
+
+  await sendEmailNotification({
+    to: email,
+    subject: emailSubject,
+    html: emailHtml,
+    text: `Comprobante Wompi Orden #${orderId}: Estado ${statusLabel}. Total: ${formatCurrency(total)}`,
+  });
+};
+
+/**
  * 1. Iniciar transacción Wompi: Calcula montos, genera referencia única y firma SHA-256 de integridad.
  */
 export const initiateWompiTransaction = async (req, res) => {
@@ -36,15 +140,11 @@ export const initiateWompiTransaction = async (req, res) => {
     const shipping = subtotal > 150000 ? 0 : 12000;
     const total = subtotal + tax + shipping;
 
-    // Monto en centavos para Wompi (Ej: COP 50.000 -> 5000000)
     const amountInCents = Math.round(total * 100);
     const currency = "COP";
 
-    // Generar referencia única de pago
     const reference = `REF-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 
-    // Paso 3 Documentación Wompi: Firma de Integridad SHA-256
-    // Cadena: "<Referencia><MontoEnCentavos><Moneda><SecretoIntegridad>"
     const rawConcat = `${reference}${amountInCents}${currency}${WOMPI_INTEGRITY_SECRET}`;
     const signature = crypto.createHash("sha256").update(rawConcat).digest("hex");
 
@@ -68,6 +168,7 @@ export const initiateWompiTransaction = async (req, res) => {
         items: validatedItems,
         customer_data: customerData || {},
         shipping_address: shippingAddress || {},
+        email_sent: false,
       };
       memoryDb.orders.unshift(order);
     } else {
@@ -108,11 +209,11 @@ export const initiateWompiTransaction = async (req, res) => {
 };
 
 /**
- * 2. Verificar estado de transacción Wompi tras la redirección del cliente
+ * 2. Verificar estado de transacción Wompi tras la redirección/retorno del cliente
  */
 export const verifyWompiTransaction = async (req, res) => {
   try {
-    const { id } = req.params; // ID de la transacción en Wompi o Referencia
+    const { id } = req.params;
 
     if (!id) {
       return res.status(400).json({ message: "ID de transacción no proporcionado" });
@@ -120,7 +221,6 @@ export const verifyWompiTransaction = async (req, res) => {
 
     let wompiTxData = null;
 
-    // Consultar a la API pública de Wompi para verificar estado en tiempo real
     try {
       const fetchRes = await fetch(`${WOMPI_API_URL}/transactions/${id}`);
       if (fetchRes.ok) {
@@ -150,17 +250,17 @@ export const verifyWompiTransaction = async (req, res) => {
       return res.status(404).json({ message: "Orden o transacción no encontrada" });
     }
 
-    // Estado obtenido de Wompi o guardado
     const status = wompiTxData?.status || order?.status || "APPROVED";
     const transactionId = wompiTxData?.id || order?.transaction_id || id;
     const orderId = order?.id || 1;
 
-    // Actualizar estado en DB si cambió
-    if (order && order.status !== status) {
+    // Actualizar estado en la base de datos si cambió o si estaba PENDING
+    if (order) {
+      const statusChanged = order.status !== status;
       order.status = status;
       order.transaction_id = transactionId;
 
-      if (!isUsingMemoryDb) {
+      if (!isUsingMemoryDb && statusChanged) {
         await pool.query(`UPDATE orders SET status = $1, transaction_id = $2 WHERE id = $3`, [
           status,
           transactionId,
@@ -168,35 +268,35 @@ export const verifyWompiTransaction = async (req, res) => {
         ]);
       }
 
-      // Si fue aprobado, enviar notificación por correo
-      if (status === "APPROVED" && req.user?.email) {
-        const emailSubject = `¡Pago Aprobado con Wompi! Orden #${order.id} - Corazón Artesano`;
-        const emailHtml = `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
-            <h2 style="color: #2e7d32;">¡Pago Aprobado Exitosamente con Wompi!</h2>
-            <p>Hola <strong>${req.user.nombre}</strong>,</p>
-            <p>Tu pago ha sido procesado mediante la pasarela de pagos Wompi con éxito.</p>
-            <div style="background-color: #f9f6f0; padding: 15px; border-radius: 8px; margin: 20px 0;">
-              <h3 style="margin-top:0; color: #8b5e3c;">Resumen de la Transacción</h3>
-              <p><strong>N° de Orden:</strong> #${order.id}</p>
-              <p><strong>ID Transacción Wompi:</strong> ${transactionId}</p>
-              <p><strong>Referencia:</strong> ${order.reference || ref}</p>
-              <p><strong>Estado:</strong> APROBADO</p>
-              <p><strong>Total:</strong> ${formatCurrency(order.total)}</p>
-            </div>
-            <p style="font-size: 12px; color: #777;">Corazón Artesano - Apoyando la tradición artesanal colombiana.</p>
-          </div>
-        `;
-        await sendEmailNotification({
-          to: req.user.email,
-          subject: emailSubject,
-          html: emailHtml,
-          text: `Orden #${order.id} aprobada con Wompi. Total: ${formatCurrency(order.total)}`,
+      // Enviar correo de comprobante si no se ha enviado aún para este estado final
+      if (!order.email_sent || statusChanged) {
+        order.email_sent = true;
+
+        const customerEmail =
+          req.user?.email ||
+          order.customer_data?.email ||
+          wompiTxData?.customer_email ||
+          wompiTxData?.user_email;
+
+        const customerName =
+          req.user?.nombre ||
+          order.customer_data?.fullName ||
+          wompiTxData?.customer_data?.full_name;
+
+        await sendWompiReceiptEmail({
+          email: customerEmail,
+          nombre: customerName,
+          orderId,
+          transactionId,
+          reference: ref,
+          status,
+          total: order.total || (wompiTxData?.amount_in_cents ? wompiTxData.amount_in_cents / 100 : 0),
+          paymentMethod: wompiTxData?.payment_method_type || order.payment_method || "Wompi Colombia",
         });
       }
     }
 
-    const finalSubtotal = Number(order?.subtotal || wompiTxData?.amount_in_cents / 119 || 0);
+    const finalSubtotal = Number(order?.subtotal || (wompiTxData?.amount_in_cents ? wompiTxData.amount_in_cents / 119 : 0));
     const finalTax = Number(order?.tax || 0);
     const finalShipping = Number(order?.shipping || 0);
     const finalTotal = Number(order?.total || (wompiTxData?.amount_in_cents ? wompiTxData.amount_in_cents / 100 : 0));
@@ -212,7 +312,7 @@ export const verifyWompiTransaction = async (req, res) => {
       shipping: finalShipping,
       total: finalTotal,
       formattedTotal: formatCurrency(finalTotal),
-      paymentMethod: wompiTxData?.payment_method_type || "Wompi Widget",
+      paymentMethod: wompiTxData?.payment_method_type || "Wompi Colombia",
     });
   } catch (error) {
     console.error("Error al verificar transacción Wompi:", error);
@@ -221,7 +321,7 @@ export const verifyWompiTransaction = async (req, res) => {
 };
 
 /**
- * 3. Webhook / Listener de eventos Wompi (Paso 7 Documentación)
+ * 3. Webhook / Listener de eventos Wompi para notificaciones asíncronas de cambios de estado
  */
 export const wompiWebhookHandler = async (req, res) => {
   try {
@@ -260,7 +360,7 @@ export const wompiWebhookHandler = async (req, res) => {
 
     if (event === "transaction.updated") {
       const transaction = data.transaction;
-      const { id, reference, status } = transaction;
+      const { id, reference, status, customer_email, payment_method_type, amount_in_cents } = transaction;
 
       console.log(`🔔 Webhook Wompi recibido para transacción ${id} (${reference}): Estado ${status}`);
 
@@ -272,10 +372,29 @@ export const wompiWebhookHandler = async (req, res) => {
           order.transaction_id = id;
         }
       } else {
-        await pool.query(
-          `UPDATE orders SET status = $1, transaction_id = $2 WHERE transaction_id = $3 OR transaction_id = $4`,
+        const resOrder = await pool.query(
+          `UPDATE orders SET status = $1, transaction_id = $2 WHERE transaction_id = $3 OR transaction_id = $4 RETURNING *`,
           [status, id, reference, id]
         );
+        order = resOrder.rows[0];
+      }
+
+      if (order && !order.email_sent) {
+        order.email_sent = true;
+        const total = order.total || (amount_in_cents ? amount_in_cents / 100 : 0);
+        const email = customer_email || order.customer_data?.email;
+        const nombre = order.customer_data?.fullName;
+
+        await sendWompiReceiptEmail({
+          email,
+          nombre,
+          orderId: order.id,
+          transactionId: id,
+          reference,
+          status,
+          total,
+          paymentMethod: payment_method_type || "Wompi Colombia",
+        });
       }
     }
 
