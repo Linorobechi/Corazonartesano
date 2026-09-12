@@ -1,3 +1,8 @@
+import dns from "node:dns";
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder("ipv4first");
+}
+
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 import path from "path";
@@ -51,7 +56,7 @@ export const getMailConfig = () => {
 };
 
 /**
- * Crea o reutiliza el transportador de Nodemailer
+ * Crea o reutiliza el transportador de Nodemailer optimizado
  */
 export const createTransporter = () => {
   const { host, port, secure, user, pass } = getMailConfig();
@@ -62,20 +67,20 @@ export const createTransporter = () => {
   }
 
   return nodemailer.createTransport({
-    host,
-    port,
-    secure,
+    host: host || "smtp.gmail.com",
+    port: port || 465,
+    secure: secure !== undefined ? secure : true,
+    family: 4, // Fuerza IPv4 directo (elimina la espera de 25s de IPv6)
     auth: { user, pass },
     tls: {
       rejectUnauthorized: false,
     },
-    connectionTimeout: 8000,
-    greetingTimeout: 8000,
-    socketTimeout: 10000,
   });
 };
 
 export const transporter = createTransporter();
+
+const LOGO_CDN_URL = "https://nuhsooerkqwuwcucwxcf.supabase.co/storage/v1/object/public/productos/logo.jpeg";
 
 /**
  * Envía el correo de recuperación de contraseña con plantilla visual artesanal y logo oficial
@@ -116,13 +121,13 @@ export const sendResetPasswordEmail = async (toEmail, resetToken, baseUrl) => {
             <!-- Contenedor Principal -->
             <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 560px; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 8px 24px rgba(60, 40, 25, 0.08); border: 1px solid #e8ded4;">
               
-              <!-- Cabecera Artesanal con Logo Oficial -->
+              <!-- Cabecera Artesanal con Logo Oficial CDN -->
               <tr>
                 <td align="center" style="background: linear-gradient(135deg, #7a4b2c 0%, #4a2e1b 100%); padding: 36px 24px; color: #ffffff;">
                   <table border="0" cellpadding="0" cellspacing="0" align="center">
                     <tr>
                       <td align="center" style="padding-bottom: 12px;">
-                        <img src="cid:logo_corazon_artesano" alt="Corazón Artesano" width="80" height="80" style="display: block; width: 80px; height: 80px; object-fit: contain; border-radius: 18px; border: 2px solid rgba(255,255,255,0.25); background-color: rgba(255,255,255,0.1);" />
+                        <img src="${LOGO_CDN_URL}" alt="Corazón Artesano" width="80" height="80" style="display: block; width: 80px; height: 80px; object-fit: contain; border-radius: 18px; border: 2px solid rgba(255,255,255,0.25); background-color: rgba(255,255,255,0.1);" />
                       </td>
                     </tr>
                     <tr>
@@ -219,21 +224,18 @@ export const sendResetPasswordEmail = async (toEmail, resetToken, baseUrl) => {
     return { success: true, simulated: true, resetUrl };
   }
 
-  const logoPath = path.resolve(__dirname, "../assets/logo.jpeg");
-
   const mailOptions = {
     from,
     to: toEmail,
     subject: "Recuperación de Contraseña - Corazón Artesano",
     text: textContent,
     html: htmlContent,
-    attachments: [
-      {
-        filename: "logo.jpeg",
-        path: logoPath,
-        cid: "logo_corazon_artesano",
-      },
-    ],
+    priority: "high",
+    headers: {
+      "X-Priority": "1",
+      "X-MSMail-Priority": "High",
+      Importance: "high",
+    },
   };
 
   try {
