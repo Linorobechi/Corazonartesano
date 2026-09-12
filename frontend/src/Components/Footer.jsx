@@ -1,0 +1,92 @@
+import logoImg from "../assets/logo.jpeg";
+import { Link } from "react-router-dom";
+
+export default function Footer() {
+  return (
+    <footer className="bg-[#8B5E3C] text-[#f5e6d3] px-6 py-12">
+      <div className="max-w-6xl mx-auto">
+        
+        {/* Grid principal */}
+        <div className="grid md:grid-cols-3 gap-10 text-sm">
+          
+          {/* Columna 1 */}
+          <div>
+            <div className="flex items-center gap-3 mb-4">
+              <img
+                src={logoImg}
+                alt="Corazón Artesano"
+                className="w-10 h-10 object-contain rounded-xl drop-shadow-md bg-white/10 p-0.5"
+              />
+              <h2 className="font-bold text-xl tracking-tight text-white">
+                Corazón Artesano
+              </h2>
+            </div>
+            <p className="text-[#f5e6d3]/80 leading-relaxed">
+              Conectando artesanos de Sincelejo, Sucre con el mundo digital.
+            </p>
+          </div>
+
+          {/* Columna 2 */}
+          <div>
+            <h3 className="font-semibold text-lg mb-4">Enlaces Rápidos</h3>
+            <ul className="space-y-2 text-[#f5e6d3]/80">
+              <li>
+                <Link to="/productos" className="hover:text-white transition">
+                  Productos
+                </Link>
+              </li>
+              <li>
+                <Link to="/galeria" className="hover:text-white transition">
+                  Galería
+                </Link>
+              </li>
+              <li>
+                <Link to="/capacitaciones" className="hover:text-white transition">
+                  Capacitaciones
+                </Link>
+              </li>
+              <li>
+                <Link to="/nosotros" className="hover:text-white transition">
+                  Quiénes Somos
+                </Link>
+              </li>
+              <li>
+                <Link to="/contacto" className="hover:text-white transition">
+                  Contacto
+                </Link>
+              </li>
+              <li>
+                <Link to="/requisitos" className="hover:text-white transition">
+                  Requisitos de Acceso
+                </Link>
+              </li>
+              <li>
+                <Link to="/terminos" className="hover:text-white transition">
+                  Términos y Condiciones
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Columna 3 */}
+          <div>
+            <h3 className="font-semibold text-lg mb-4">Ubicación</h3>
+            <p className="text-[#f5e6d3]/80 leading-relaxed">
+              Sincelejo, Sucre <br />
+              Colombia
+            </p>
+          </div>
+        </div>
+
+        {/* Línea divisora */}
+        <div className="border-t border-[#f5e6d3]/30 my-8"></div>
+
+        {/* Copyright */}
+        <p className="text-center text-sm text-[#f5e6d3]/70">
+          © 2026 Corazón Artesano. Todos los derechos reservados.
+        </p>
+
+      </div>
+    </footer>
+  );
+}
