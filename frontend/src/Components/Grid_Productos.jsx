@@ -181,8 +181,10 @@ export default function Grid_Productos() {
           )}
 
           <div className="absolute bottom-3 left-3 bg-white/95 backdrop-blur-md text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-sm text-gray-800">
-            <FaStar className="text-yellow-500" />
-            {product.rating || "4.8"}
+            <FaStar className={Number(product.review_count || 0) > 0 ? "text-yellow-500" : "text-gray-300"} />
+            {Number(product.review_count || 0) > 0
+              ? `${Number(product.rating).toFixed(1)}/5`
+              : "Sin calificación"}
           </div>
 
           <div className="absolute top-3 right-3 flex flex-col gap-2">
@@ -305,6 +307,7 @@ export default function Grid_Productos() {
 
               {/* Product Reviews Widget */}
               <ProductReviews
+                key={selectedProduct.id}
                 productId={selectedProduct.id}
                 productName={selectedProduct.nombre}
               />

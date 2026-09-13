@@ -8,11 +8,18 @@ export const getProductReviews = async (req, res) => {
     const { productId, id } = req.params;
     const effectiveId = Number(productId || id);
 
+    if (!Number.isInteger(effectiveId) || effectiveId <= 0) {
+      return res.status(400).json({ message: "El identificador del producto no es válido" });
+    }
+
     if (isUsingMemoryDb) {
       const reviews = memoryDb.reviews
         .filter((r) => r.product_id === effectiveId)
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-      return res.json({ reviews });
+      const averageRating = reviews.length
+        ? Number((reviews.reduce((sum, review) => sum + Number(review.rating), 0) / reviews.length).toFixed(1))
+        : 0;
+      return res.json({ reviews, averageRating, reviewCount: reviews.length });
     }
 
     const rows = await pool.query(
@@ -20,7 +27,24 @@ export const getProductReviews = async (req, res) => {
       [effectiveId]
     );
 
-    return res.json({ reviews: rows.rows });
+    const averageRows = await pool.query(
+      `SELECT COALESCE(ROUND(AVG(r.rating)::numeric, 1), 0) AS average_rating
+       FROM products p
+       LEFT JOIN reviews r ON r.product_id = p.id
+       WHERE p.id = $1
+       GROUP BY p.id`,
+      [effectiveId]
+    );
+
+    if (averageRows.rows.length === 0) {
+      return res.status(404).json({ message: "Producto no encontrado" });
+    }
+
+    return res.json({
+      reviews: rows.rows,
+      averageRating: Number(averageRows.rows[0].average_rating || 0),
+      reviewCount: rows.rows.length,
+    });
   } catch (error) {
     console.error("Error al consultar reseñas:", error);
     return res.status(500).json({ message: "Error al consultar las reseñas del producto" });
@@ -36,15 +60,30 @@ export const addProductReview = async (req, res) => {
     const effectiveId = Number(productId || id);
     const { rating, comentario } = req.body;
 
-    if (!rating || !comentario || !comentario.trim()) {
+    if (!Number.isInteger(effectiveId) || effectiveId <= 0) {
+      return res.status(400).json({ message: "El identificador del producto no es válido" });
+    }
+
+    if (!Number.isInteger(Number(rating)) || Number(rating) < 1 || Number(rating) > 5) {
+      return res.status(400).json({ message: "La calificación debe ser un número entero entre 1 y 5" });
+    }
+
+    if (!comentario || !comentario.trim()) {
       return res.status(400).json({ message: "La calificación y el comentario son obligatorios" });
     }
 
-    const numericRating = Math.min(5, Math.max(1, Number(rating) || 5));
+    const numericRating = Number(rating);
     const userName = req.user.nombre || "Comprador";
     const userId = req.user.id;
 
     if (isUsingMemoryDb) {
+      const alreadyReviewed = memoryDb.reviews.some(
+        (review) => review.product_id === effectiveId && review.user_id === userId
+      );
+      if (alreadyReviewed) {
+        return res.status(409).json({ message: "Ya calificaste este producto" });
+      }
+
       const newRev = {
         id: memoryDb.nextReviewId++,
         product_id: effectiveId,
@@ -73,20 +112,26 @@ export const addProductReview = async (req, res) => {
       });
     }
 
-    const result = await pool.query(
-      `INSERT INTO reviews (product_id, user_id, user_name, rating, comentario) 
-       VALUES ($1, $2, $3, $4, $5) 
-       RETURNING *`,
-      [effectiveId, userId, userName, numericRating, comentario.trim()]
-    );
+    let result;
+    try {
+      result = await pool.query(
+        `INSERT INTO reviews (product_id, user_id, user_name, rating, comentario)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING *`,
+        [effectiveId, userId, userName, numericRating, comentario.trim()]
+      );
+    } catch (error) {
+      if (error.code === "23505") {
+        return res.status(409).json({ message: "Ya calificaste este producto" });
+      }
+      throw error;
+    }
 
     const avgRows = await pool.query(
       "SELECT AVG(rating) as avg_rating FROM reviews WHERE product_id = $1",
       [effectiveId]
     );
     const avgRating = Number(Number(avgRows.rows[0]?.avg_rating || numericRating).toFixed(1));
-
-    await pool.query("UPDATE products SET rating = $1 WHERE id = $2", [avgRating, effectiveId]);
 
     return res.status(201).json({
       message: "Reseña y calificación publicadas con éxito",

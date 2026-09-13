@@ -1,5 +1,4 @@
 import pg from "pg";
-import bcrypt from "bcryptjs";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -26,34 +25,15 @@ export const memoryDb = {
   products: [],
   orders: [],
   order_items: [],
-  reviews: [
-    {
-      id: 1,
-      product_id: 1,
-      user_id: 2,
-      user_name: "Carlos Comprador",
-      rating: 5,
-      comentario: "Excelente Sombrero Vueltiao. La flexibilidad de la caña flecha y la finura de las trenzas son impecables.",
-      created_at: new Date(),
-    },
-    {
-      id: 2,
-      product_id: 3,
-      user_id: 2,
-      user_name: "Andrea Ramírez",
-      rating: 5,
-      comentario: "La Mochila Wayuu llegó súper rápido y los colores tradicionales son hermosos. ¡Excelente calidad!",
-      created_at: new Date(),
-    },
-  ],
+  reviews: [],
   password_resets: [],
   nextUserId: 1,
   nextProductId: 1,
   nextOrderId: 1,
-  nextReviewId: 3,
+  nextReviewId: 1,
 };
 
-export const seedProducts = [
+const seedProducts = [
   {
     nombre: "Sombrero Vueltiao Tradicional",
     autor: "María Contreras",
@@ -180,7 +160,6 @@ export const ensureDatabase = async () => {
             precio NUMERIC(10,2) NOT NULL,
             imagen_key VARCHAR(80) NOT NULL,
             image_data TEXT NULL,
-            rating NUMERIC(2,1) NOT NULL DEFAULT 4.8,
             destacado BOOLEAN NOT NULL DEFAULT FALSE,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
           );
@@ -216,45 +195,11 @@ export const ensureDatabase = async () => {
             comentario TEXT NOT NULL,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
           );
+
+          CREATE UNIQUE INDEX IF NOT EXISTS idx_reviews_product_user_unique
+            ON reviews(product_id, user_id);
         `);
 
-        // Check and seed products if empty
-        const countRes = await client.query("SELECT COUNT(*) AS total FROM products");
-        if (Number(countRes.rows[0]?.total || 0) === 0) {
-          for (const p of seedProducts) {
-            await client.query(
-              `INSERT INTO products (nombre, autor, descripcion, precio, imagen_key, rating, destacado)
-               VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-              [p.nombre, p.autor, p.descripcion, p.precio, p.imagen_key, p.rating, p.destacado]
-            );
-          }
-        }
-
-        // Check and seed Admin in PostgreSQL if not exists
-        const ADMIN_EMAIL = "admin@corazonartesano.com";
-        const ADMIN_IDENT = "1000000000";
-        const adminCheck = await client.query(
-          "SELECT id FROM users WHERE email = $1 OR identificacion = $2 LIMIT 1",
-          [ADMIN_EMAIL, ADMIN_IDENT]
-        );
-        if (adminCheck.rows.length === 0) {
-          const hashedPassword = await bcrypt.hash("admin123", 10);
-          await client.query(
-            `INSERT INTO users (nombre, email, identificacion, tipo_documento, password, rol, especialidad, ubicacion)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-            [
-              "Administrador Principal",
-              ADMIN_EMAIL,
-              ADMIN_IDENT,
-              "CC",
-              hashedPassword,
-              "admin",
-              "Gestión de Plataforma",
-              "Sincelejo, Sucre",
-            ]
-          );
-          console.log(`[SEED] Cuenta de Administrador creada en Supabase PostgreSQL: ${ADMIN_EMAIL}`);
-        }
         console.log("✅ [DB] Conectado exitosamente a Supabase PostgreSQL");
       } finally {
         client.release();
@@ -265,79 +210,4 @@ export const ensureDatabase = async () => {
     }
   }
 
-  // Populate MemoryDB with seeds if active
-  if (isUsingMemoryDb) {
-    if (memoryDb.products.length === 0) {
-      seedProducts.forEach((p) => {
-        memoryDb.products.push({
-          id: memoryDb.nextProductId++,
-          nombre: p.nombre,
-          autor: p.autor,
-          author_user_id: null,
-          descripcion: p.descripcion,
-          precio: p.precio,
-          imagen_key: p.imagen_key,
-          image_data: null,
-          rating: p.rating,
-          destacado: p.destacado,
-        });
-      });
-    }
-
-    const ADMIN_EMAIL = "admin@corazonartesano.com";
-    const ADMIN_IDENT = "1000000000";
-    const memAdmin = memoryDb.users.find((u) => u.email === ADMIN_EMAIL);
-    if (!memAdmin) {
-      const hashedPassword = await bcrypt.hash("admin123", 10);
-      memoryDb.users.push({
-        id: memoryDb.nextUserId++,
-        nombre: "Administrador Principal",
-        email: ADMIN_EMAIL,
-        identificacion: ADMIN_IDENT,
-        tipo_documento: "CC",
-        password: hashedPassword,
-        rol: "admin",
-        moodle_id: 1,
-        foto: null,
-        telefono: "+57 300 000 0000",
-        biografia: "Administrador general de la plataforma Corazón Artesano.",
-        especialidad: "Gestión de Plataforma",
-        ubicacion: "Sincelejo, Sucre",
-        created_at: new Date(),
-      });
-
-      memoryDb.users.push({
-        id: memoryDb.nextUserId++,
-        nombre: "María Contreras",
-        email: "maria@artesana.com",
-        identificacion: "1065123456",
-        tipo_documento: "CC",
-        password: hashedPassword,
-        rol: "artesano",
-        moodle_id: 101,
-        foto: null,
-        telefono: "+57 301 234 5678",
-        biografia: "Maestra tejedora de sombreros vueltiaos tradicionales.",
-        especialidad: "Tejido en Caña Flecha",
-        ubicacion: "Sampués, Sucre",
-        created_at: new Date(),
-      });
-      memoryDb.users.push({
-        id: memoryDb.nextUserId++,
-        nombre: "Carlos Comprador",
-        email: "carlos@cliente.com",
-        identificacion: "1098765432",
-        tipo_documento: "CC",
-        password: hashedPassword,
-        rol: "comprador",
-        moodle_id: null,
-        foto: null,
-        telefono: "+57 312 987 6543",
-        biografia: "Amante de las artesanías y coleccionista.",
-        especialidad: "",
-        ubicacion: "Bogotá, Colombia",
-        created_at: new Date(),
-      });
-    }
-  }
 };

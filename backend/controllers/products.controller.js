@@ -54,10 +54,13 @@ export const getProducts = async (_req, res) => {
          p.precio,
          p.imagen_key,
          p.image_data,
-         p.rating,
-         COALESCE(p.destacado, false) AS destacado
+        COALESCE(ROUND(AVG(r.rating)::numeric, 1), 0) AS rating,
+        COUNT(r.id)::int AS review_count,
+        COALESCE(p.destacado, false) AS destacado
        FROM products p
        LEFT JOIN users u ON u.id = p.author_user_id
+       LEFT JOIN reviews r ON r.product_id = p.id
+       GROUP BY p.id, u.nombre
        ORDER BY p.destacado DESC, p.id DESC`
     );
 
@@ -67,6 +70,8 @@ export const getProducts = async (_req, res) => {
         precio: formatCurrency(Number(product.precio)),
         rawPrecio: Number(product.precio),
         destacado: Boolean(product.destacado),
+        rating: Number(product.rating || 0),
+        review_count: Number(product.review_count || 0),
       })),
     });
   } catch (error) {
@@ -115,7 +120,6 @@ export const createProduct = async (req, res) => {
         precio: parsedPrice,
         imagen_key,
         image_data,
-        rating: 5.0,
         destacado: false,
       };
       memoryDb.products.unshift(newProd);
@@ -126,10 +130,10 @@ export const createProduct = async (req, res) => {
     }
 
     const result = await pool.query(
-      `INSERT INTO products (nombre, autor, author_user_id, descripcion, precio, imagen_key, image_data, rating, destacado)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO products (nombre, autor, author_user_id, descripcion, precio, imagen_key, image_data, destacado)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
-      [nombre.trim(), autorNombre, author_user_id, descripcion.trim(), parsedPrice, imagen_key, image_data, 5.0, false]
+      [nombre.trim(), autorNombre, author_user_id, descripcion.trim(), parsedPrice, imagen_key, image_data, false]
     );
 
     const created = result.rows[0];
@@ -144,7 +148,6 @@ export const createProduct = async (req, res) => {
         descripcion: created.descripcion,
         precio: formatCurrency(parsedPrice),
         rawPrecio: parsedPrice,
-        rating: 5.0,
         image_data,
         destacado: false,
       },
