@@ -6,7 +6,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "test": "node --test test/auth.middleware.test.js test/api.integration.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

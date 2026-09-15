@@ -39,7 +39,7 @@ app.use("/uploads", express.static(uploadDir));
 app.use("/api", apiRoutes);
 
 // Inicialización del servidor y base de datos
-const startServer = async () => {
+export const startServer = async () => {
   try {
     await ensureDatabase();
     app.listen(PORT, () => {
@@ -50,6 +50,8 @@ const startServer = async () => {
   }
 };
 
-startServer();
+if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))) {
+  startServer();
+}
 
 export default app;
