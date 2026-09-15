@@ -60,6 +60,10 @@ export const apiClient = async (endpoint, options = {}) => {
     }
   }
 
+  if (response.status === 401 && token && typeof window !== "undefined") {
+    window.dispatchEvent(new Event("auth-expired"));
+  }
+
   return response;
 };
 

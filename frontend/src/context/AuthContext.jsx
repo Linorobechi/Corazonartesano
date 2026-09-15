@@ -3,10 +3,28 @@ import { loginUser, registerUser, getUserProfile } from "../api/auth.js";
 
 const AuthContext = createContext(null);
 
+const getTokenExpiration = (authToken) => {
+  try {
+    const payload = JSON.parse(atob(authToken.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return Number(payload.exp) * 1000;
+  } catch {
+    return 0;
+  }
+};
+
+const isTokenExpired = (authToken) =>
+  !authToken || getTokenExpiration(authToken) <= Date.now();
+
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => {
     try {
-      return localStorage.getItem("auth_token") || null;
+      const storedToken = localStorage.getItem("auth_token");
+      if (isTokenExpired(storedToken)) {
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("auth_user");
+        return null;
+      }
+      return storedToken;
     } catch {
       return null;
     }
@@ -14,6 +32,7 @@ export function AuthProvider({ children }) {
 
   const [user, setUser] = useState(() => {
     try {
+      if (isTokenExpired(localStorage.getItem("auth_token"))) return null;
       const stored = localStorage.getItem("auth_user");
       return stored ? JSON.parse(stored) : null;
     } catch {
@@ -27,6 +46,13 @@ export function AuthProvider({ children }) {
     try {
       const storedToken = localStorage.getItem("auth_token");
       const storedUser = localStorage.getItem("auth_user");
+      if (isTokenExpired(storedToken)) {
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("auth_user");
+        setToken(null);
+        setUser(null);
+        return;
+      }
       setToken(storedToken || null);
       setUser(storedUser ? JSON.parse(storedUser) : null);
     } catch {
@@ -34,6 +60,32 @@ export function AuthProvider({ children }) {
       setUser(null);
     }
   }, []);
+
+  useEffect(() => {
+    const handleExpiredSession = () => {
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("auth_user");
+      setToken(null);
+      setUser(null);
+      window.dispatchEvent(new CustomEvent("app-notification", {
+        detail: { type: "warning", message: "Tu sesión expiró. Inicia sesión nuevamente." },
+      }));
+    };
+
+    window.addEventListener("auth-expired", handleExpiredSession);
+    return () => window.removeEventListener("auth-expired", handleExpiredSession);
+  }, []);
+
+  useEffect(() => {
+    if (!token) return undefined;
+    const remainingTime = getTokenExpiration(token) - Date.now();
+    if (remainingTime <= 0) {
+      window.dispatchEvent(new Event("auth-expired"));
+      return undefined;
+    }
+    const timer = window.setTimeout(() => window.dispatchEvent(new Event("auth-expired")), remainingTime);
+    return () => window.clearTimeout(timer);
+  }, [token]);
 
   useEffect(() => {
     window.addEventListener("auth-changed", syncAuthState);

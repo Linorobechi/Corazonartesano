@@ -11,6 +11,7 @@ dotenv.config({ quiet: true });
 const { Pool } = pg;
 
 export const JWT_SECRET = process.env.JWT_SECRET || "corazon-artesano-secret";
+export const JWT_EXPIRES_IN = "1h";
 export const DATABASE_URL = process.env.DATABASE_URL || "";
 
 // In-Memory Database Fallback if PostgreSQL/Supabase is not connected

@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import { pool, isUsingMemoryDb, memoryDb, JWT_SECRET } from "../config/db.js";
+import { pool, isUsingMemoryDb, memoryDb, JWT_SECRET, JWT_EXPIRES_IN } from "../config/db.js";
 import { buildUserResponse } from "../utils/formatters.js";
 import { uploadFileToStorage } from "../utils/storage.js";
 import { sendPasswordResetEmail } from "../config/mailer.js";
@@ -43,7 +43,7 @@ export const register = async (req, res) => {
 
       memoryDb.users.push(newUser);
       const userPayload = buildUserResponse(newUser);
-      const token = jwt.sign(userPayload, JWT_SECRET, { expiresIn: "7d" });
+      const token = jwt.sign(userPayload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
       return res.status(201).json({
         message: "Cuenta registrada exitosamente",
@@ -74,7 +74,7 @@ export const register = async (req, res) => {
 
     const user = result.rows[0];
     const userPayload = buildUserResponse(user);
-    const token = jwt.sign(userPayload, JWT_SECRET, { expiresIn: "7d" });
+    const token = jwt.sign(userPayload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
     return res.status(201).json({
       message: "Cuenta registrada exitosamente",
@@ -122,7 +122,7 @@ export const login = async (req, res) => {
     }
 
     const userPayload = buildUserResponse(user);
-    const token = jwt.sign(userPayload, JWT_SECRET, { expiresIn: "7d" });
+    const token = jwt.sign(userPayload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
     return res.json({
       message: "Inicio de sesión exitoso",
@@ -253,7 +253,7 @@ export const updateProfile = async (req, res) => {
     }
 
     const userPayload = buildUserResponse(user);
-    const newToken = jwt.sign(userPayload, JWT_SECRET, { expiresIn: "7d" });
+    const newToken = jwt.sign(userPayload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
     return res.json({
       message: "Perfil actualizado correctamente",
@@ -385,4 +385,3 @@ export const resetPassword = async (req, res) => {
     return res.status(500).json({ message: "Error al restablecer la contraseña" });
   }
 };
-
