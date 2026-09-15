@@ -44,6 +44,8 @@ CREATE TABLE IF NOT EXISTS products (
   precio NUMERIC(10,2) NOT NULL,
   imagen_key VARCHAR(80) NOT NULL,
   image_data TEXT NULL,
+  image_gallery TEXT[] NOT NULL DEFAULT '{}',
+  colores TEXT[] NOT NULL DEFAULT '{}',
   destacado BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -58,6 +60,8 @@ CREATE TABLE IF NOT EXISTS orders (
   shipping NUMERIC(10,2) NOT NULL DEFAULT 0,
   payment_method VARCHAR(50) NOT NULL,
   status VARCHAR(30) NOT NULL,
+  fulfillment_status VARCHAR(30) NOT NULL DEFAULT 'PENDIENTE',
+  tracking_number VARCHAR(120),
   transaction_id VARCHAR(100) NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -70,6 +74,13 @@ CREATE TABLE IF NOT EXISTS order_items (
   nombre VARCHAR(180) NOT NULL,
   cantidad INT NOT NULL,
   precio NUMERIC(10,2) NOT NULL
+);
+
+-- 7. TABLA: CARTS (Carrito persistente por usuario)
+CREATE TABLE IF NOT EXISTS carts (
+  user_id INT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  items JSONB NOT NULL DEFAULT '[]',
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- 7. TABLA: REVIEWS (Opiniones y valoraciones por estrellas)

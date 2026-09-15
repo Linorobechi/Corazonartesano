@@ -15,14 +15,14 @@ router.post(
   "/products",
   authMiddleware,
   requireRole(["artesano", "admin"]),
-  upload.single("image_file"),
+  upload.array("image_files", 5),
   createProduct
 );
 router.put(
   "/products/:id",
   authMiddleware,
   requireRole(["artesano", "admin"]),
-  upload.single("image_file"),
+  upload.array("image_files", 5),
   updateProduct
 );
 router.delete(

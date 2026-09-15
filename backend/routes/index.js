@@ -4,6 +4,7 @@ import authRoutes from "./auth.routes.js";
 import productsRoutes from "./products.routes.js";
 import reviewsRoutes from "./reviews.routes.js";
 import ordersRoutes from "./orders.routes.js";
+import cartRoutes from "./cart.routes.js";
 import wompiRoutes from "./wompi.routes.js";
 import adminRoutes from "./admin.routes.js";
 import moodleRoutes from "./moodle.routes.js";
@@ -26,9 +27,9 @@ router.use(authRoutes);
 router.use(productsRoutes);
 router.use(reviewsRoutes);
 router.use(ordersRoutes);
+router.use(cartRoutes);
 router.use(wompiRoutes);
 router.use("/admin", authMiddleware, requireRole(["admin"]), adminRoutes);
 router.use(moodleRoutes);
 
 export default router;
-

@@ -109,7 +109,7 @@ export default function CartDrawer() {
               ) : (
                 cartItems.map((item) => (
                   <div
-                    key={item.id}
+                    key={`${item.id}-${item.color || "sin-color"}`}
                     className="flex gap-4 p-3 bg-[#fdfbf7] rounded-xl border border-[#ede3d8] items-center"
                   >
                     <img
@@ -130,14 +130,14 @@ export default function CartDrawer() {
                       {/* Quantity controls */}
                       <div className="flex items-center gap-2 mt-2">
                         <button
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          onClick={() => updateQuantity(item.id, item.quantity - 1, item.color)}
                           className="w-6 h-6 rounded bg-gray-200 text-gray-700 font-bold hover:bg-gray-300 text-xs"
                         >
                           -
                         </button>
                         <span className="text-xs font-semibold px-2">{item.quantity}</span>
                         <button
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          onClick={() => updateQuantity(item.id, item.quantity + 1, item.color)}
                           className="w-6 h-6 rounded bg-gray-200 text-gray-700 font-bold hover:bg-gray-300 text-xs"
                         >
                           +
@@ -146,7 +146,7 @@ export default function CartDrawer() {
                     </div>
 
                     <button
-                      onClick={() => removeFromCart(item.id)}
+                      onClick={() => removeFromCart(item.id, item.color)}
                       className="text-red-500 hover:text-red-700 p-2"
                       title="Eliminar producto"
                     >

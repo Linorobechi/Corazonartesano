@@ -3,7 +3,7 @@ import logoImg from "../assets/logo.jpeg";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
-import { FaShoppingBag, FaSignOutAlt, FaGraduationCap, FaStore, FaCrown } from "react-icons/fa";
+import { FaShoppingBag, FaSignOutAlt, FaGraduationCap, FaStore, FaCrown, FaChartLine } from "react-icons/fa";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
@@ -162,12 +162,22 @@ function Header() {
                       <FaStore className="text-xs" /> Agregar Productos
                     </span>
                   </NavLink>
+                  <NavLink to="/ventas-artesano" className={linkClass}>
+                    <span className="flex items-center gap-1 font-semibold text-[#8b5e3c]">
+                      <FaChartLine className="text-xs" /> Mis Ventas
+                    </span>
+                  </NavLink>
                   <NavLink to="/capacitaciones" className={linkClass}>
                     <span className="flex items-center gap-1">
                       <FaGraduationCap className="text-xs" /> Capacitaciones
                     </span>
                   </NavLink>
                 </>
+              )}
+              {!isAdmin && (
+                <NavLink to="/mis-pedidos" className={linkClass}>
+                  Mis pedidos
+                </NavLink>
               )}
 
               {/* Shopping Cart Drawer Trigger (Oculto para Administrador) */}

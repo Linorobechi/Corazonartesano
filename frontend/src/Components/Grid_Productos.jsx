@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { FaStar, FaShoppingCart, FaEye, FaTimes } from "react-icons/fa";
+import { FaStar, FaShoppingCart, FaEye, FaTimes, FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../context/CartContext";
 import ProductReviews from "./ProductReviews";
@@ -25,6 +25,13 @@ const getProductImage = (product) => {
   if (!product) return img1;
   if (product.image_data) return product.image_data;
   return productImages[product.imagen_key] || img1;
+};
+
+const getProductImages = (product) => {
+  if (!product) return [img1];
+  return [product.image_data, ...(product.image_gallery || [])].filter(Boolean).length
+    ? [product.image_data, ...(product.image_gallery || [])].filter(Boolean)
+    : [productImages[product.imagen_key] || img1];
 };
 
 const fadeUp = {
@@ -103,8 +110,18 @@ export default function Grid_Productos() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [selectedColor, setSelectedColor] = useState("");
+  const [selectedQuantity, setSelectedQuantity] = useState(1);
 
   const { addToCart } = useCart();
+
+  const openProductDetails = (product) => {
+    setSelectedProduct(product);
+    setSelectedImageIndex(0);
+    setSelectedColor(product.colores?.[0] || "");
+    setSelectedQuantity(1);
+  };
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -187,17 +204,6 @@ export default function Grid_Productos() {
               : "Sin calificación"}
           </div>
 
-          <div className="absolute top-3 right-3 flex flex-col gap-2">
-            <motion.button
-              whileTap={{ scale: 0.8 }}
-              whileHover={{ scale: 1.1 }}
-              onClick={() => setSelectedProduct(product)}
-              className="bg-white/90 p-2.5 rounded-full shadow-md text-gray-700 hover:text-[#8b5e3c]"
-              title="Ver detalle y reseñas"
-            >
-              <FaEye />
-            </motion.button>
-          </div>
         </div>
 
         <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
@@ -220,11 +226,11 @@ export default function Grid_Productos() {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.9 }}
-              onClick={() => addToCart(product)}
+              onClick={() => openProductDetails(product)}
               className="flex items-center gap-1.5 bg-[#8b5e3c] text-white text-xs px-3.5 py-2 rounded-xl hover:bg-[#754d31] transition font-semibold shadow-sm"
             >
-              <FaShoppingCart />
-              Agregar
+              <FaEye />
+              Ver
             </motion.button>
           </div>
         </div>
@@ -274,11 +280,40 @@ export default function Grid_Productos() {
               </button>
 
               <div className="grid md:grid-cols-2 gap-6 items-center">
-                <img
-                  src={getProductImage(selectedProduct)}
-                  alt={selectedProduct.nombre}
-                  className="w-full h-64 object-cover rounded-2xl border border-gray-200"
-                />
+                <div className="relative">
+                  <img
+                    src={getProductImages(selectedProduct)[selectedImageIndex]}
+                    alt={`${selectedProduct.nombre} ${selectedImageIndex + 1}`}
+                    className="w-full h-64 object-cover rounded-2xl border border-gray-200"
+                  />
+                  {getProductImages(selectedProduct).length > 1 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedImageIndex((current) =>
+                          current === 0 ? getProductImages(selectedProduct).length - 1 : current - 1
+                        )}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 text-[#8b5e3c] shadow"
+                        aria-label="Imagen anterior"
+                      >
+                        <FaChevronLeft />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedImageIndex((current) =>
+                          (current + 1) % getProductImages(selectedProduct).length
+                        )}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 text-[#8b5e3c] shadow"
+                        aria-label="Imagen siguiente"
+                      >
+                        <FaChevronRight />
+                      </button>
+                      <span className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-2 py-1 text-[10px] text-white">
+                        {selectedImageIndex + 1}/{getProductImages(selectedProduct).length}
+                      </span>
+                    </>
+                  )}
+                </div>
 
                 <div className="space-y-3">
                   <span className="bg-[#faf7f2] text-[#8b5e3c] px-3 py-1 rounded-full text-xs font-bold border border-[#ede3d8]">
@@ -287,6 +322,53 @@ export default function Grid_Productos() {
                   <h2 className="text-xl font-bold text-gray-800">{selectedProduct.nombre}</h2>
                   <p className="text-xs text-gray-600 leading-relaxed">{selectedProduct.descripcion}</p>
 
+                  {selectedProduct.colores?.length > 0 && (
+                    <div>
+                      <p className="mb-2 text-xs font-bold text-gray-700">Elige un color:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedProduct.colores.map((color) => (
+                          <button
+                            key={color}
+                            type="button"
+                            onClick={() => setSelectedColor(color)}
+                            className={`rounded-full border px-3 py-1.5 text-xs ${
+                              selectedColor === color
+                                ? "border-[#8b5e3c] bg-[#f1ece7] font-bold text-[#8b5e3c]"
+                                : "border-gray-200 text-gray-600"
+                            }`}
+                          >
+                            {color}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <p className="mb-2 text-xs font-bold text-gray-700">Cantidad:</p>
+                    <div className="flex w-fit items-center gap-3 rounded-xl border border-[#e2d5c7] bg-[#faf7f2] p-1">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedQuantity((current) => Math.max(1, current - 1))}
+                        className="h-8 w-8 rounded-lg bg-white text-lg font-bold text-[#8b5e3c] shadow-sm hover:bg-[#f1ece7]"
+                        aria-label="Disminuir cantidad"
+                      >
+                        -
+                      </button>
+                      <span className="min-w-6 text-center text-sm font-bold text-gray-800">
+                        {selectedQuantity}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedQuantity((current) => current + 1)}
+                        className="h-8 w-8 rounded-lg bg-white text-lg font-bold text-[#8b5e3c] shadow-sm hover:bg-[#f1ece7]"
+                        aria-label="Aumentar cantidad"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
                   <div className="flex items-center justify-between pt-2">
                     <span className="text-xl font-bold text-[#8b5e3c]">
                       {selectedProduct.precio}
@@ -294,10 +376,11 @@ export default function Grid_Productos() {
 
                     <button
                       onClick={() => {
-                        addToCart(selectedProduct);
+                        addToCart({ ...selectedProduct, selectedColor }, selectedQuantity);
                         setSelectedProduct(null);
                       }}
-                      className="bg-[#8b5e3c] text-white text-xs px-4 py-2.5 rounded-xl font-bold hover:bg-[#754d31] transition flex items-center gap-2"
+                      disabled={selectedProduct.colores?.length > 0 && !selectedColor}
+                      className="bg-[#8b5e3c] text-white text-xs px-4 py-2.5 rounded-xl font-bold hover:bg-[#754d31] transition flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <FaShoppingCart /> Agregar al Carrito
                     </button>

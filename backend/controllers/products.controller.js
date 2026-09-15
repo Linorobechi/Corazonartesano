@@ -2,6 +2,13 @@ import { pool, isUsingMemoryDb, memoryDb } from "../config/db.js";
 import { formatCurrency } from "../utils/formatters.js";
 import { uploadFileToStorage } from "../utils/storage.js";
 
+const parseColors = (value) => {
+  if (!value) return [];
+  const colors = typeof value === "string" ? JSON.parse(value) : value;
+  if (!Array.isArray(colors)) throw new Error("Las variantes de color no son válidas");
+  return [...new Set(colors.filter((color) => typeof color === "string").map((color) => color.trim()).filter(Boolean))];
+};
+
 /**
  * Valida si el usuario tiene permiso para editar o eliminar un producto
  */
@@ -54,6 +61,8 @@ export const getProducts = async (_req, res) => {
          p.precio,
          p.imagen_key,
          p.image_data,
+         p.image_gallery,
+         p.colores,
         COALESCE(ROUND(AVG(r.rating)::numeric, 1), 0) AS rating,
         COUNT(r.id)::int AS review_count,
         COALESCE(p.destacado, false) AS destacado
@@ -86,7 +95,8 @@ export const getProducts = async (_req, res) => {
 export const createProduct = async (req, res) => {
   try {
     const { nombre, descripcion, precio, image_url } = req.body;
-    const imageFile = req.file;
+    const colores = parseColors(req.body.colores);
+    const imageFiles = req.files || [];
 
     if (!nombre || !descripcion || !precio) {
       return res.status(400).json({ message: "Todos los campos son obligatorios" });
@@ -102,13 +112,20 @@ export const createProduct = async (req, res) => {
 
     // Subir imagen a Supabase Storage Bucket 'productos' o usar image_url provista
     let image_data = null;
-    if (imageFile) {
-      image_data = await uploadFileToStorage(imageFile, "productos");
+    let image_gallery = [];
+    if (imageFiles.length > 0) {
+      const uploadedImages = await Promise.all(
+        imageFiles.map((file) => uploadFileToStorage(file, "productos"))
+      );
+      image_data = uploadedImages[0];
+      image_gallery = uploadedImages.slice(1);
     } else if (image_url) {
       image_data = image_url.trim();
     }
 
-    const imagen_key = imageFile ? imageFile.originalname : (image_data ? "supabase-storage" : "1.jpeg");
+    const imagen_key = imageFiles[0]
+      ? imageFiles[0].originalname
+      : (image_data ? "supabase-storage" : "1.jpeg");
 
     if (isUsingMemoryDb) {
       const newProd = {
@@ -120,6 +137,8 @@ export const createProduct = async (req, res) => {
         precio: parsedPrice,
         imagen_key,
         image_data,
+        image_gallery,
+        colores,
         destacado: false,
       };
       memoryDb.products.unshift(newProd);
@@ -130,10 +149,10 @@ export const createProduct = async (req, res) => {
     }
 
     const result = await pool.query(
-      `INSERT INTO products (nombre, autor, author_user_id, descripcion, precio, imagen_key, image_data, destacado)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO products (nombre, autor, author_user_id, descripcion, precio, imagen_key, image_data, image_gallery, colores, destacado)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
-      [nombre.trim(), autorNombre, author_user_id, descripcion.trim(), parsedPrice, imagen_key, image_data, false]
+      [nombre.trim(), autorNombre, author_user_id, descripcion.trim(), parsedPrice, imagen_key, image_data, image_gallery, colores, false]
     );
 
     const created = result.rows[0];
@@ -149,6 +168,8 @@ export const createProduct = async (req, res) => {
         precio: formatCurrency(parsedPrice),
         rawPrecio: parsedPrice,
         image_data,
+        image_gallery,
+        colores,
         destacado: false,
       },
     });
@@ -165,7 +186,8 @@ export const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
     const { nombre, descripcion, precio, image_url } = req.body;
-    const imageFile = req.file;
+    const colores = req.body.colores === undefined ? null : parseColors(req.body.colores);
+    const imageFiles = req.files || [];
 
     if (isUsingMemoryDb) {
       const prodIndex = memoryDb.products.findIndex((p) => p.id === Number(id));
@@ -179,11 +201,16 @@ export const updateProduct = async (req, res) => {
       if (nombre) prod.nombre = nombre.trim();
       if (descripcion) prod.descripcion = descripcion.trim();
       if (precio) prod.precio = Number(precio);
-      if (imageFile) {
-        prod.image_data = await uploadFileToStorage(imageFile, "productos");
+      if (imageFiles.length > 0) {
+        const uploadedImages = await Promise.all(
+          imageFiles.map((file) => uploadFileToStorage(file, "productos"))
+        );
+        prod.image_data = uploadedImages[0];
+        prod.image_gallery = uploadedImages.slice(1);
       } else if (image_url) {
         prod.image_data = image_url.trim();
       }
+      if (colores) prod.colores = colores;
 
       return res.json({ message: "Producto actualizado correctamente", product: prod });
     }
@@ -201,18 +228,28 @@ export const updateProduct = async (req, res) => {
     const newPrice = precio ? Number(precio) : prod.precio;
 
     let newImageData = prod.image_data;
-    if (imageFile) {
-      newImageData = await uploadFileToStorage(imageFile, "productos");
+    let newImageGallery = prod.image_gallery || [];
+    if (imageFiles.length > 0) {
+      const uploadedImages = await Promise.all(
+        imageFiles.map((file) => uploadFileToStorage(file, "productos"))
+      );
+      newImageData = uploadedImages[0];
+      newImageGallery = uploadedImages.slice(1);
     } else if (image_url) {
       newImageData = image_url.trim();
     }
 
     await pool.query(
-      `UPDATE products SET nombre = $1, descripcion = $2, precio = $3, image_data = $4 WHERE id = $5`,
-      [newName, newDesc, newPrice, newImageData, id]
+      `UPDATE products SET nombre = $1, descripcion = $2, precio = $3, image_data = $4, image_gallery = $5, colores = COALESCE($6, colores) WHERE id = $7`,
+      [newName, newDesc, newPrice, newImageData, newImageGallery, colores, id]
     );
 
-    return res.json({ message: "Producto actualizado correctamente", image_data: newImageData });
+    return res.json({
+      message: "Producto actualizado correctamente",
+      image_data: newImageData,
+      image_gallery: newImageGallery,
+      colores: colores || prod.colores || [],
+    });
   } catch (error) {
     console.error("Error al actualizar producto:", error);
     return res.status(500).json({ message: "Error al actualizar producto" });

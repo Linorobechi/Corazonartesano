@@ -1,11 +1,17 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useRef } from "react";
+import { useAuth } from "./AuthContext.jsx";
+import { clearSavedCart, getSavedCart, saveCart } from "../api/cart.js";
 
 const CartContext = createContext();
 
 export function CartProvider({ children }) {
+  const { user, isAuthenticated } = useAuth();
+  const userKey = user?.id ? `corazon_cart_user_${user.id}` : "corazon_cart_guest";
+  const loadedUserRef = useRef(null);
+  const syncingRef = useRef(false);
   const [cartItems, setCartItems] = useState(() => {
     try {
-      const stored = localStorage.getItem("corazon_cart");
+      const stored = localStorage.getItem("corazon_cart_guest");
       return stored ? JSON.parse(stored) : [];
     } catch {
       return [];
@@ -15,8 +21,34 @@ export function CartProvider({ children }) {
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem("corazon_cart", JSON.stringify(cartItems));
-  }, [cartItems]);
+    let cancelled = false;
+    if (!isAuthenticated || !user?.id) {
+      loadedUserRef.current = null;
+      setCartItems([]);
+      return undefined;
+    }
+    setCartItems([]);
+    loadedUserRef.current = null;
+    getSavedCart()
+      .then((data) => {
+        if (!cancelled) {
+          setCartItems(Array.isArray(data.items) ? data.items : []);
+          loadedUserRef.current = user.id;
+        }
+      })
+      .catch((error) => {
+        console.error("Error al cargar el carrito del usuario:", error);
+        if (!cancelled) loadedUserRef.current = user.id;
+      });
+    return () => { cancelled = true; };
+  }, [isAuthenticated, user?.id]);
+
+  useEffect(() => {
+    localStorage.setItem(userKey, JSON.stringify(cartItems));
+    if (isAuthenticated && user?.id && loadedUserRef.current === user.id && !syncingRef.current) {
+      saveCart(cartItems).catch((error) => console.error("Error al sincronizar el carrito:", error));
+    }
+  }, [cartItems, isAuthenticated, user?.id, userKey]);
 
   const parsePrice = (priceStr) => {
     if (typeof priceStr === "number") return priceStr;
@@ -27,7 +59,9 @@ export function CartProvider({ children }) {
 
   const addToCart = (product, qty = 1) => {
     setCartItems((prevItems) => {
-      const existingIndex = prevItems.findIndex((item) => item.id === product.id);
+      const existingIndex = prevItems.findIndex(
+        (item) => item.id === product.id && item.color === (product.selectedColor || null)
+      );
       const priceNum = product.rawPrecio || parsePrice(product.precio);
 
       if (existingIndex > -1) {
@@ -45,6 +79,7 @@ export function CartProvider({ children }) {
           precioStr: product.precio,
           price: priceNum,
           imagen: product.image_data || product.imagen_key,
+          color: product.selectedColor || null,
           quantity: qty,
         },
       ];
@@ -60,22 +95,30 @@ export function CartProvider({ children }) {
     );
   };
 
-  const removeFromCart = (productId) => {
-    setCartItems((prev) => prev.filter((item) => item.id !== productId));
+  const matchesItem = (item, productId, color) => item.id === productId && (color === undefined || item.color === color);
+
+  const removeFromCart = (productId, color) => {
+    setCartItems((prev) => prev.filter((item) => !matchesItem(item, productId, color)));
   };
 
-  const updateQuantity = (productId, newQty) => {
+  const updateQuantity = (productId, newQty, color) => {
     if (newQty <= 0) {
-      removeFromCart(productId);
+      removeFromCart(productId, color);
       return;
     }
     setCartItems((prev) =>
-      prev.map((item) => (item.id === productId ? { ...item, quantity: newQty } : item))
+      prev.map((item) => (matchesItem(item, productId, color) ? { ...item, quantity: newQty } : item))
     );
   };
 
   const clearCart = () => {
     setCartItems([]);
+    if (isAuthenticated && user?.id) {
+      syncingRef.current = true;
+      clearSavedCart()
+        .catch((error) => console.error("Error al vaciar el carrito guardado:", error))
+        .finally(() => { syncingRef.current = false; });
+    }
   };
 
   const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);

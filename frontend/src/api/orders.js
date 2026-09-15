@@ -13,6 +13,19 @@ export const getUserOrders = async () => {
   return parseResponse(response);
 };
 
+export const getArtisanOrders = async () => {
+  const response = await apiClient("/api/orders/artesano/pedidos");
+  return parseResponse(response);
+};
+
+export const updateArtisanOrderStatus = async (orderId, status, trackingNumber = "") => {
+  const response = await apiClient(`/api/orders/artesano/pedidos/${orderId}/estado`, {
+    method: "PATCH",
+    body: JSON.stringify({ status, trackingNumber }),
+  });
+  return parseResponse(response);
+};
+
 export const initiateWompiPayment = async (orderPayload) => {
   const response = await apiClient("/api/wompi/initiate", {
     method: "POST",
@@ -25,4 +38,3 @@ export const verifyWompiPayment = async (transactionId) => {
   const response = await apiClient(`/api/wompi/verify/${transactionId}`);
   return parseResponse(response);
 };
-

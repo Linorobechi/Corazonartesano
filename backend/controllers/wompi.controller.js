@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { pool, isUsingMemoryDb, memoryDb } from "../config/db.js";
 import { formatCurrency } from "../utils/formatters.js";
 import { sendEmailNotification } from "../config/mailer.js";
+import { sendArtisanOrderNotifications } from "./orders.controller.js";
 
 const WOMPI_PUBLIC_KEY = process.env.WOMPI_PUBLIC_KEY || "pub_test_IJJQqhI6kPJX5Ur4SmNqWSzFNGFuGHgL";
 const WOMPI_EVENTS_SECRET = process.env.WOMPI_EVENTS_SECRET || "test_events_fjrySglKsf7JV26Zt3j8admfHDCqljRt";
@@ -173,10 +174,10 @@ export const initiateWompiTransaction = async (req, res) => {
       memoryDb.orders.unshift(order);
     } else {
       const resOrder = await pool.query(
-        `INSERT INTO orders (user_id, subtotal, tax, shipping, total, payment_method, status, transaction_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        `INSERT INTO orders (user_id, subtotal, tax, shipping, total, payment_method, status, fulfillment_status, transaction_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          RETURNING id`,
-        [req.user.id, subtotal, tax, shipping, total, "Wompi Widget / Web Checkout", "PENDING", reference]
+        [req.user.id, subtotal, tax, shipping, total, "Wompi Widget / Web Checkout", "PENDING", "PENDIENTE", reference]
       );
       orderId = resOrder.rows[0].id;
 
@@ -293,6 +294,21 @@ export const verifyWompiTransaction = async (req, res) => {
           total: order.total || (wompiTxData?.amount_in_cents ? wompiTxData.amount_in_cents / 100 : 0),
           paymentMethod: wompiTxData?.payment_method_type || order.payment_method || "Wompi Colombia",
         });
+
+        if (status === "APPROVED" && statusChanged) {
+          const artisanItems = isUsingMemoryDb
+            ? order.items || []
+            : (await pool.query(
+                "SELECT product_id, nombre, cantidad, precio FROM order_items WHERE order_id = $1",
+                [order.id]
+              )).rows;
+          await sendArtisanOrderNotifications({
+            items: artisanItems,
+            orderId: order.id,
+            clientName: customerName || "Un cliente",
+            status,
+          });
+        }
       }
     }
 

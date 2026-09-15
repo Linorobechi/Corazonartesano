@@ -24,6 +24,7 @@ export const memoryDb = {
   users: [],
   products: [],
   orders: [],
+  carts: [],
   order_items: [],
   reviews: [],
   password_resets: [],
@@ -33,7 +34,7 @@ export const memoryDb = {
   nextReviewId: 1,
 };
 
-const seedProducts = [
+/*const seedProducts = [
   {
     nombre: "Sombrero Vueltiao Tradicional",
     autor: "María Contreras",
@@ -88,7 +89,7 @@ const seedProducts = [
     rating: 4.9,
     destacado: false,
   },
-];
+];*/
 
 let pgPool = null;
 
@@ -160,10 +161,13 @@ export const ensureDatabase = async () => {
             precio NUMERIC(10,2) NOT NULL,
             imagen_key VARCHAR(80) NOT NULL,
             image_data TEXT NULL,
+            image_gallery TEXT[] NOT NULL DEFAULT '{}',
+            colores TEXT[] NOT NULL DEFAULT '{}',
             destacado BOOLEAN NOT NULL DEFAULT FALSE,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
           );
-
+          ALTER TABLE products ADD COLUMN IF NOT EXISTS colores TEXT[] NOT NULL DEFAULT '{}';
+          ALTER TABLE products ADD COLUMN IF NOT EXISTS image_gallery TEXT[] NOT NULL DEFAULT '{}';
           CREATE TABLE IF NOT EXISTS orders (
             id SERIAL PRIMARY KEY,
             user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -173,9 +177,13 @@ export const ensureDatabase = async () => {
             shipping NUMERIC(10,2) NOT NULL DEFAULT 0,
             payment_method VARCHAR(50) NOT NULL,
             status VARCHAR(30) NOT NULL,
+            fulfillment_status VARCHAR(30) NOT NULL DEFAULT 'PENDIENTE',
+            tracking_number VARCHAR(120),
             transaction_id VARCHAR(100) NOT NULL,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
           );
+          ALTER TABLE orders ADD COLUMN IF NOT EXISTS fulfillment_status VARCHAR(30) NOT NULL DEFAULT 'PENDIENTE';
+          ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_number VARCHAR(120);
 
           CREATE TABLE IF NOT EXISTS order_items (
             id SERIAL PRIMARY KEY,
@@ -184,6 +192,12 @@ export const ensureDatabase = async () => {
             nombre VARCHAR(180) NOT NULL,
             cantidad INT NOT NULL,
             precio NUMERIC(10,2) NOT NULL
+          );
+
+          CREATE TABLE IF NOT EXISTS carts (
+            user_id INT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            items JSONB NOT NULL DEFAULT '[]',
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
           );
 
           CREATE TABLE IF NOT EXISTS reviews (

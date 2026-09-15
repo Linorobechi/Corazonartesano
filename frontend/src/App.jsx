@@ -21,6 +21,8 @@ import Terminos from "./pages/Terminos.jsx";
 import ToastHost from "./Components/ToastHost.jsx";
 import Perfil from "./pages/Perfil.jsx";
 import AdminPanel from "./pages/AdminPanel.jsx";
+import VentasArtesano from "./pages/VentasArtesano.jsx";
+import MisPedidos from "./pages/MisPedidos.jsx";
 import { ProtectedRoute, PublicOnlyRoute, RoleRoute } from "./Components/AuthRoutes.jsx";
 
 function App() {
@@ -64,6 +66,7 @@ function App() {
             <Route element={<ProtectedRoute />}>
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/perfil" element={<Perfil />} />
+              <Route path="/mis-pedidos" element={<MisPedidos />} />
             </Route>
 
             {/* Rutas restringidas para Administrador */}
@@ -75,6 +78,7 @@ function App() {
             <Route element={<RoleRoute allowedRoles={["artesano"]} />}>
               <Route path="/panel" element={<Navigate to="/agregar-productos" replace />} />
               <Route path="/agregar-productos" element={<Panel />} />
+              <Route path="/ventas-artesano" element={<VentasArtesano />} />
               <Route path="/capacitaciones" element={<Capacitaciones />} />
               <Route path="/cursos" element={<Capacitaciones />} />
             </Route>

@@ -32,14 +32,27 @@ const emptyForm = {
   precio: "",
 };
 
+const COLOR_OPTIONS = [
+  { name: "Rojo", value: "#dc2626" },
+  { name: "Naranja", value: "#ea580c" },
+  { name: "Amarillo", value: "#eab308" },
+  { name: "Verde", value: "#16a34a" },
+  { name: "Azul", value: "#2563eb" },
+  { name: "Morado", value: "#9333ea" },
+  { name: "Rosado", value: "#ec4899" },
+  { name: "Café", value: "#92400e" },
+  { name: "Negro", value: "#111827" },
+  { name: "Blanco", value: "#ffffff" },
+];
+
 export default function Panel() {
   const storedUser = localStorage.getItem("auth_user");
   const user = storedUser ? JSON.parse(storedUser) : null;
 
-  const [filterTab, setFilterTab] = useState("todos"); // 'todos' | 'mis_productos'
   const [form, setForm] = useState(emptyForm);
-  const [imagePreview, setImagePreview] = useState("");
-  const [imageFile, setImageFile] = useState(null);
+  const [imagePreviews, setImagePreviews] = useState([]);
+  const [imageFiles, setImageFiles] = useState([]);
+  const [selectedColors, setSelectedColors] = useState([]);
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -49,8 +62,9 @@ export default function Panel() {
   // Edit Mode state
   const [editingProduct, setEditingProduct] = useState(null);
   const [editForm, setEditForm] = useState(emptyForm);
-  const [editImageFile, setEditImageFile] = useState(null);
-  const [editImagePreview, setEditImagePreview] = useState("");
+  const [editImageFiles, setEditImageFiles] = useState([]);
+  const [editImagePreviews, setEditImagePreviews] = useState([]);
+  const [editColors, setEditColors] = useState([]);
 
   const refreshProducts = useCallback(async () => {
     try {
@@ -82,20 +96,19 @@ export default function Panel() {
   }, [refreshProducts]);
 
   const handleChange = (e) => {
-    if (e.target.name === "image_file") {
-      const file = e.target.files?.[0];
-      if (!file) {
-        setImagePreview("");
-        setImageFile(null);
+    if (e.target.name === "image_files") {
+      const selectedFiles = Array.from(e.target.files || []);
+      if (selectedFiles.length > 5) {
+        setError("Solo puedes seleccionar hasta 5 imágenes.");
+      }
+      const files = selectedFiles.slice(0, 5);
+      if (!files.length) {
+        setImagePreviews([]);
+        setImageFiles([]);
         return;
       }
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = typeof reader.result === "string" ? reader.result : "";
-        setImagePreview(result);
-        setImageFile(file);
-      };
-      reader.readAsDataURL(file);
+      setImageFiles(files);
+      setImagePreviews(files.map((file) => URL.createObjectURL(file)));
       return;
     }
 
@@ -106,19 +119,24 @@ export default function Panel() {
   };
 
   const handleEditImageChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) {
-      setEditImagePreview("");
-      setEditImageFile(null);
+    const selectedFiles = Array.from(e.target.files || []);
+    if (selectedFiles.length > 5) {
+      setError("Solo puedes seleccionar hasta 5 imágenes.");
+    }
+    const files = selectedFiles.slice(0, 5);
+    if (!files.length) {
+      setEditImagePreviews([]);
+      setEditImageFiles([]);
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === "string" ? reader.result : "";
-      setEditImagePreview(result);
-      setEditImageFile(file);
-    };
-    reader.readAsDataURL(file);
+    setEditImageFiles(files);
+    setEditImagePreviews(files.map((file) => URL.createObjectURL(file)));
+  };
+
+  const toggleColor = (color) => {
+    setSelectedColors((current) =>
+      current.includes(color) ? current.filter((item) => item !== color) : [...current, color]
+    );
   };
 
   // CREATE PRODUCT
@@ -141,10 +159,9 @@ export default function Panel() {
       payload.append("nombre", form.nombre);
       payload.append("descripcion", form.descripcion);
       payload.append("precio", form.precio);
+      payload.append("colores", JSON.stringify(selectedColors));
 
-      if (imageFile) {
-        payload.append("image_file", imageFile);
-      }
+      imageFiles.forEach((file) => payload.append("image_files", file));
 
       const response = await safeFetch("/api/products", {
         method: "POST",
@@ -162,8 +179,9 @@ export default function Panel() {
 
       setMessage("¡Producto publicado correctamente en el catálogo!");
       setForm(emptyForm);
-      setImagePreview("");
-      setImageFile(null);
+      setImagePreviews([]);
+      setImageFiles([]);
+      setSelectedColors([]);
       await refreshProducts();
       setTimeout(() => setMessage(""), 4000);
     } catch (saveError) {
@@ -207,13 +225,14 @@ export default function Panel() {
   // UPDATE PRODUCT
   const handleStartEdit = (prod) => {
     setEditingProduct(prod);
-    setEditImagePreview("");
-    setEditImageFile(null);
+    setEditImagePreviews([]);
+    setEditImageFiles([]);
     setEditForm({
       nombre: prod.nombre || "",
       descripcion: prod.descripcion || "",
       precio: prod.rawPrecio ? String(prod.rawPrecio) : (prod.precio ? String(prod.precio).replace(/[^0-9]/g, "") : ""),
     });
+    setEditColors(Array.isArray(prod.colores) ? prod.colores : []);
   };
 
   const handleUpdateProduct = async (e) => {
@@ -228,10 +247,9 @@ export default function Panel() {
       payload.append("nombre", editForm.nombre);
       payload.append("descripcion", editForm.descripcion);
       payload.append("precio", editForm.precio);
+      payload.append("colores", JSON.stringify(editColors));
 
-      if (editImageFile) {
-        payload.append("image_file", editImageFile);
-      }
+      editImageFiles.forEach((file) => payload.append("image_files", file));
 
       const response = await safeFetch(`/api/products/${editingProduct.id}`, {
         method: "PUT",
@@ -248,8 +266,8 @@ export default function Panel() {
 
       setMessage(`Producto "${editForm.nombre}" actualizado correctamente.`);
       setEditingProduct(null);
-      setEditImageFile(null);
-      setEditImagePreview("");
+      setEditImageFiles([]);
+      setEditImagePreviews([]);
       await refreshProducts();
       setTimeout(() => setMessage(""), 4000);
     } catch (err) {
@@ -272,9 +290,7 @@ export default function Panel() {
     return isMyProduct(prod);
   };
 
-  const displayedProducts = filterTab === "mis_productos"
-    ? products.filter((p) => isMyProduct(p))
-    : products;
+  const displayedProducts = products.filter((p) => isMyProduct(p));
 
   const myProductsCount = products.filter((p) => isMyProduct(p)).length;
 
@@ -316,6 +332,7 @@ export default function Panel() {
               <div className="p-3 bg-[#fbf7f3] text-[#8b5e3c] rounded-xl text-lg">
                 <FaUserTag />
               </div>
+
               <div>
                 <p className="text-[11px] text-gray-500 font-semibold uppercase">Artesano Creador</p>
                 <p className="text-sm font-bold text-gray-800">{user?.nombre || "Artesano"}</p>
@@ -418,23 +435,63 @@ export default function Panel() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Cambiar Imagen (Opcional)</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2">
+                      Variantes de color disponibles
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {COLOR_OPTIONS.map((color) => (
+                        <button
+                          key={color.name}
+                          type="button"
+                          onClick={() => setEditColors((current) =>
+                            current.includes(color.name)
+                              ? current.filter((item) => item !== color.name)
+                              : [...current, color.name]
+                          )}
+                          className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] ${
+                            editColors.includes(color.name)
+                              ? "border-[#8b5e3c] bg-[#f1ece7] font-bold text-[#8b5e3c]"
+                              : "border-gray-200 text-gray-600"
+                          }`}
+                        >
+                          <span
+                            className="h-3 w-3 rounded-full border border-black/10"
+                            style={{ backgroundColor: color.value }}
+                          />
+                          {color.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Cambiar imágenes (máximo 5, opcional)
+                    </label>
                     <input
                       type="file"
                       accept="image/*"
+                      multiple
                       onChange={handleEditImageChange}
                       className="w-full rounded-xl bg-[#f1ece7] p-2 text-xs"
                     />
                   </div>
 
-                  {editImagePreview && (
+                  {editImagePreviews.length > 0 && (
                     <div className="rounded-2xl border border-[#eaded3] bg-[#faf7f3] p-2">
-                      <p className="text-[10px] text-gray-500 mb-1 font-semibold">Nueva Imagen Seleccionada:</p>
-                      <img
-                        src={editImagePreview}
-                        alt="Previsualización"
-                        className="h-28 w-full rounded-xl object-cover"
-                      />
+                      <p className="text-[10px] text-gray-500 mb-1 font-semibold">
+                        Nuevas imágenes seleccionadas ({editImagePreviews.length}/5):
+                      </p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {editImagePreviews.map((preview, index) => (
+                          <img
+                            key={preview}
+                            src={preview}
+                            alt={`Previsualización ${index + 1}`}
+                            className="h-20 w-full rounded-xl object-cover"
+                          />
+                        ))}
+                      </div>
                     </div>
                   )}
 
@@ -511,24 +568,64 @@ export default function Panel() {
               </div>
 
               <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-2">
+                  Variantes de color disponibles
+                </label>
+                <p className="mb-2 text-[11px] text-gray-500">Selecciona los colores que tendrá este producto.</p>
+                <div className="flex flex-wrap gap-2">
+                  {COLOR_OPTIONS.map((color) => (
+                    <button
+                      key={color.name}
+                      type="button"
+                      onClick={() => toggleColor(color.name)}
+                      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] ${
+                        selectedColors.includes(color.name)
+                          ? "border-[#8b5e3c] bg-[#f1ece7] font-bold text-[#8b5e3c]"
+                          : "border-gray-200 text-gray-600"
+                      }`}
+                    >
+                      <span
+                        className="h-3 w-3 rounded-full border border-black/10"
+                        style={{ backgroundColor: color.value }}
+                      />
+                      {color.name}
+                    </button>
+                  ))}
+                </div>
+                {selectedColors.length > 0 && (
+                  <p className="mt-2 text-[11px] text-[#8b5e3c]">
+                    Seleccionados: {selectedColors.join(", ")}
+                  </p>
+                )}
+              </div>
+
+              <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Fotografía del Producto</label>
                 <input
-                  name="image_file"
+                  name="image_files"
                   type="file"
                   accept="image/*"
+                  multiple
                   onChange={handleChange}
                   className="w-full rounded-xl bg-[#f1ece7] p-2 text-xs"
                 />
               </div>
 
-              {imagePreview && (
+              {imagePreviews.length > 0 && (
                 <div className="rounded-2xl border border-[#eaded3] bg-[#faf7f3] p-3">
-                  <p className="text-[11px] text-gray-500 mb-1.5 font-semibold">Vista Previa de la Fotografía</p>
-                  <img
-                    src={imagePreview}
-                    alt="Vista previa"
-                    className="h-40 w-full rounded-xl object-cover shadow-sm"
-                  />
+                  <p className="text-[11px] text-gray-500 mb-1.5 font-semibold">
+                    Vista previa ({imagePreviews.length}/5 imágenes)
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {imagePreviews.map((preview, index) => (
+                      <img
+                        key={preview}
+                        src={preview}
+                        alt={`Vista previa ${index + 1}`}
+                        className="h-24 w-full rounded-xl object-cover shadow-sm"
+                      />
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -546,32 +643,9 @@ export default function Panel() {
               <div className="flex justify-between items-center flex-wrap gap-2 border-b pb-3">
                 <h3 className="text-lg font-bold text-gray-800">Gestión de Catálogo</h3>
 
-                {/* Filter Tabs */}
-                <div className="flex gap-1.5 bg-[#f5f1ec] p-1 rounded-xl text-xs font-bold">
-                  <button
-                    type="button"
-                    onClick={() => setFilterTab("todos")}
-                    className={`px-3 py-1.5 rounded-lg transition ${
-                      filterTab === "todos"
-                        ? "bg-[#8b5e3c] text-white shadow-sm"
-                        : "text-gray-600 hover:text-gray-900"
-                    }`}
-                  >
-                    Todos ({products.length})
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setFilterTab("mis_productos")}
-                    className={`px-3 py-1.5 rounded-lg transition ${
-                      filterTab === "mis_productos"
-                        ? "bg-[#8b5e3c] text-white shadow-sm"
-                        : "text-gray-600 hover:text-gray-900"
-                    }`}
-                  >
-                    Mis Productos ({myProductsCount})
-                  </button>
-                </div>
+                <span className="text-xs font-bold text-[#8b5e3c]">
+                  Mis productos ({myProductsCount})
+                </span>
               </div>
 
               {loadingProducts ? (
@@ -580,9 +654,7 @@ export default function Panel() {
                 </div>
               ) : displayedProducts.length === 0 ? (
                 <div className="text-xs text-gray-500 py-12 text-center bg-[#faf7f3] rounded-2xl border border-dashed border-[#e2d5c7]">
-                  {filterTab === "mis_productos"
-                    ? "Aún no has publicado productos a tu nombre. ¡Usa el formulario para agregar tu primera pieza!"
-                    : "No hay productos en el catálogo actualmente."}
+                  "Aún no has publicado productos a tu nombre. ¡Usa el formulario para agregar tu primera pieza!"
                 </div>
               ) : (
                 <div className="space-y-3 max-h-[540px] overflow-y-auto pr-1">
