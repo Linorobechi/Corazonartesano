@@ -25,9 +25,24 @@ const stagger = {
   },
 };
 
+const WHATSAPP_NUMBER = "573175242475";
 export default function ContactSection() {
   const handleFormSubmit = (data) => {
-    console.log("Datos del formulario:", data);
+    const message = [
+      "Hola, quiero contactar a Corazón Artesano.",
+      "",
+      `Nombre completo: ${data.nombre}`,
+      `Correo electrónico: ${data.correo}`,
+      `Teléfono: ${data.telefono}`,
+      `Tipo de contacto: ${data.tipo}`,
+      `Mensaje: ${data.mensaje}`,
+    ].join("\n");
+
+    window.open(
+      `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
   };
 
   return (
@@ -85,8 +100,7 @@ export default function ContactSection() {
                 <FaPhoneAlt className="text-[#8b5e3c] mt-1" />
                 <p>
                   <strong>Teléfono:</strong><br />
-                  +57 300 123 4567<br />
-                  +57 315 987 6543
+                  +57 317 524 2475
                 </p>
               </motion.div>
 
