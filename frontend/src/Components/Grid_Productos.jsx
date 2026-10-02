@@ -43,69 +43,6 @@ const fadeUp = {
   },
 };
 
-const DEFAULT_PRODUCTS = [
-  {
-    id: 1,
-    nombre: "Sombrero Vueltiao Tradicional",
-    autor: "María Contreras",
-    descripcion: "Sombrero vueltiao auténtico tejido a mano por tejedores de Sucre",
-    precio: "$ 180.000",
-    rawPrecio: 180000,
-    imagen_key: "1.jpeg",
-    rating: 4.8,
-  },
-  {
-    id: 2,
-    nombre: "Collar Artesanal Multicolor",
-    autor: "Carmen López",
-    descripcion: "Collar de mostacilla hecho a mano con tintes tradicionales",
-    precio: "$ 85.000",
-    rawPrecio: 85000,
-    imagen_key: "2.jpeg",
-    rating: 4.8,
-  },
-  {
-    id: 3,
-    nombre: "Mochila Wayuu Tradicional",
-    autor: "José Martínez",
-    descripcion: "Mochila tejida a mano con patrones geométricos únicos",
-    precio: "$ 250.000",
-    rawPrecio: 250000,
-    imagen_key: "3.jpeg",
-    rating: 4.9,
-  },
-  {
-    id: 4,
-    nombre: "Pulseras Artesanales",
-    autor: "Ana Pérez",
-    descripcion: "Juego de 3 pulseras tejidas con colores vivos folclóricos",
-    precio: "$ 40.000",
-    rawPrecio: 40000,
-    imagen_key: "4.jpeg",
-    rating: 4.7,
-  },
-  {
-    id: 5,
-    nombre: "Accesorios Étnicos",
-    autor: "Luis Gómez",
-    descripcion: "Accesorios en madera e hilo con identidad cultural colombiana",
-    precio: "$ 60.000",
-    rawPrecio: 60000,
-    imagen_key: "5.jpeg",
-    rating: 4.6,
-  },
-  {
-    id: 6,
-    nombre: "Joyas Artesanales",
-    autor: "Sofía Rojas",
-    descripcion: "Joyas hechas a mano con detalles en filigrana",
-    precio: "$ 120.000",
-    rawPrecio: 120000,
-    imagen_key: "6.jpeg",
-    rating: 4.9,
-  },
-];
-
 export default function Grid_Productos() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -139,14 +76,10 @@ export default function Grid_Productos() {
         }
 
         const data = await response.json();
-        if (data.products && data.products.length > 0) {
-          setProducts(data.products);
-        } else {
-          setProducts(DEFAULT_PRODUCTS);
-        }
+        setProducts(Array.isArray(data.products) ? data.products : []);
       } catch (loadError) {
-        console.warn("Usando catálogo de productos por defecto:", loadError);
-        setProducts(DEFAULT_PRODUCTS);
+        console.error("Error al cargar los productos desde el servidor:", loadError);
+        setProducts([]);
       } finally {
         setLoading(false);
       }

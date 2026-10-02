@@ -35,63 +35,6 @@ export const memoryDb = {
   nextReviewId: 1,
 };
 
-/*const seedProducts = [
-  {
-    nombre: "Sombrero Vueltiao Tradicional",
-    autor: "María Contreras",
-    descripcion: "Sombrero vueltiao auténtico tejido a mano por artesanos de Sucre",
-    precio: 180000,
-    imagen_key: "1.jpeg",
-    rating: 4.8,
-    destacado: true,
-  },
-  {
-    nombre: "Collar Artesanal Multicolor",
-    autor: "Carmen López",
-    descripcion: "Collar de mostacilla hecho a mano con tintes naturales",
-    precio: 85000,
-    imagen_key: "2.jpeg",
-    rating: 4.8,
-    destacado: false,
-  },
-  {
-    nombre: "Mochila Wayuu Tradicional",
-    autor: "José Martínez",
-    descripcion: "Mochila tejida a mano con patrones únicos ancestrales",
-    precio: 250000,
-    imagen_key: "3.jpeg",
-    rating: 4.9,
-    destacado: true,
-  },
-  {
-    nombre: "Pulseras Artesanales",
-    autor: "Ana Pérez",
-    descripcion: "Juego de 3 pulseras tejidas con colores vivos",
-    precio: 40000,
-    imagen_key: "4.jpeg",
-    rating: 4.7,
-    destacado: false,
-  },
-  {
-    nombre: "Accesorios Étnicos",
-    autor: "Luis Gómez",
-    descripcion: "Accesorios elaborados en madera tratada e hilo folclórico",
-    precio: 60000,
-    imagen_key: "5.jpeg",
-    rating: 4.6,
-    destacado: false,
-  },
-  {
-    nombre: "Joyas Artesanales",
-    autor: "Sofía Rojas",
-    descripcion: "Joyas hechas a mano en filigrana y elementos artesanales",
-    precio: 120000,
-    imagen_key: "6.jpeg",
-    rating: 4.9,
-    destacado: false,
-  },
-];*/
-
 let pgPool = null;
 
 if (DATABASE_URL) {
